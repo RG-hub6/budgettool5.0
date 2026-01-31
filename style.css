@@ -5,22 +5,11 @@ body {
   padding: 20px;
 }
 
-h1 {
-  color: #2a3f54;
-}
+h1 { color: #2a3f54; }
+h2 { color: #1c6ea4; }
+h3 { color: #1c6e44; }
 
-h2 {
-  color: #1c6ea4;
-}
-
-h3 {
-  color: #1c6e44;
-}
-
-#month-buttons {
-  margin-bottom: 20px;
-}
-
+#month-buttons { margin-bottom: 20px; }
 .month-button {
   padding: 8px 12px;
   margin-right: 5px;
@@ -30,10 +19,7 @@ h3 {
   border-radius: 4px;
   cursor: pointer;
 }
-
-.month-button.active {
-  background-color: #145a86;
-}
+.month-button.active { background-color: #145a86; }
 
 .month-block {
   background: white;
@@ -46,13 +32,16 @@ h3 {
 .category, .sub-category {
   margin-left: 20px;
   margin-top: 10px;
-  border-left: 2px solid #ccc;
+  border-left: 3px solid #ccc;
   padding-left: 10px;
+  position: relative;
 }
 
 .category > strong, .sub-category > strong {
   cursor: pointer;
 }
+
+.sub { margin-left: 20px; }
 
 button {
   margin-left: 5px;
@@ -63,10 +52,7 @@ button {
   background-color: #1c6ea4;
   color: white;
 }
-
-button:hover {
-  background-color: #145a86;
-}
+button:hover { background-color: #145a86; }
 
 input[type="number"], input[type="text"], select {
   margin-left: 5px;
@@ -74,3 +60,4 @@ input[type="number"], input[type="text"], select {
   border-radius: 4px;
   border: 1px solid #ccc;
 }
+
