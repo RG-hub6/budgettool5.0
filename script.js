@@ -2,18 +2,20 @@
 let budgetData = {};
 let currentMonth = null;
 
-// --- Functie: maand toevoegen ---
+// --- Kleuren per niveau ---
+const colors = ["#ff9999", "#99ccff", "#99ff99", "#ffcc99", "#cc99ff"];
+
+// --- Maand toevoegen ---
 function addNewMonth() {
   const month = prompt("Naam van de nieuwe maand:");
   if (!month || budgetData[month]) return;
-
   budgetData[month] = { income: 0, categories: {}, balance: 0 };
   currentMonth = month;
   renderMonthButtons();
   renderMonth();
 }
 
-// --- Render knoppen voor maanden ---
+// --- Render maand knoppen ---
 function renderMonthButtons() {
   const container = document.getElementById("month-buttons");
   container.innerHTML = "";
@@ -36,7 +38,6 @@ function renderMonth() {
 
   const monthDiv = document.createElement("div");
   monthDiv.className = "month-block";
-
   monthDiv.innerHTML = `
     <h2>${currentMonth}</h2>
     <label>Inkomen (€):</label>
@@ -46,7 +47,6 @@ function renderMonth() {
     <button onclick="addCategory(null)">+ Nieuwe categorie</button>
     <div id="categories"></div>
   `;
-
   container.appendChild(monthDiv);
   renderCategories();
 }
@@ -64,9 +64,8 @@ function updateIncome() {
 function updateBalance() {
   const monthData = budgetData[currentMonth];
   let totalExpenses = calculateExpenses(monthData.categories);
-  let balance = monthData.income - totalExpenses;
-  monthData.balance = balance;
-  document.getElementById("balance").innerText = balance.toFixed(2);
+  monthData.balance = monthData.income - totalExpenses;
+  document.getElementById("balance").innerText = monthData.balance.toFixed(2);
 }
 
 // --- Recursief uitgaven berekenen ---
@@ -88,28 +87,73 @@ function addCategory(parent) {
   const container = parent ? parent.querySelector(".sub") : document.getElementById("categories");
   const newDiv = document.createElement("div");
   newDiv.className = parent ? "sub-category" : "category";
-  newDiv.innerHTML = `<strong>${name}</strong> <button onclick="addCategory(this.parentNode)">+ Subcategorie</button> <input type="number" placeholder="Uitgave (€)" oninput="updateAmount(this, '${name}')"><div class="sub"></div>`;
-  
+  const level = parent ? (parent.dataset.level ? parseInt(parent.dataset.level)+1 : 1) : 0;
+  const color = colors[level % colors.length];
+  newDiv.style.backgroundColor = color;
+  newDiv.dataset.level = level;
+
+  newDiv.innerHTML = `
+    <strong onclick="toggleSub(this)">${name}</strong>
+    <button onclick="addCategory(this.parentNode)">+ Subcategorie</button>
+    <input type="number" placeholder="Uitgave (€)" oninput="updateAmount(this,'${name}')">
+    <select onchange="updateRecurring(this,'${name}')">
+      <option value="">Geen</option>
+      <option value="dag">Dag</option>
+      <option value="week">Week</option>
+      <option value="maand">Maand</option>
+      <option value="jaar">Jaar</option>
+    </select>
+    <div class="sub"></div>
+  `;
   container.appendChild(newDiv);
-  if (!parent) budgetData[currentMonth].categories[name] = { sub:{} };
+
+  // Data opslaan
+  const monthData = budgetData[currentMonth];
+  if (!parent) monthData.categories[name] = { amount:0, recurring:"", sub:{} };
   else {
-    let parentName = parent.querySelector("strong").innerText;
-    if (!parent.dataset.sub) parent.dataset.sub = "{}";
-    let subObj = JSON.parse(parent.dataset.sub);
-    subObj[name] = { sub:{} };
-    parent.dataset.sub = JSON.stringify(subObj);
+    let path = getPath(parent);
+    let obj = monthData.categories;
+    for (let p of path) obj = obj[p].sub;
+    obj[name] = { amount:0, recurring:"", sub:{} };
   }
 }
 
-// --- Uitgaven updaten ---
-function updateAmount(input, name) {
-  const val = parseFloat(input.value);
-  if (isNaN(val)) return;
+// --- Toggle subcategorie inklappen ---
+function toggleSub(el) {
+  const subDiv = el.parentNode.querySelector(".sub");
+  if (subDiv.style.display === "none") subDiv.style.display = "block";
+  else subDiv.style.display = "none";
+}
 
-  // Dit is een eenvoudige manier: alles boven categorie/subcategorie opslaan
-  let monthData = budgetData[currentMonth];
-  monthData.categories[name].amount = val;
+// --- Uitgaven updaten ---
+function updateAmount(input,name){
+  const val = parseFloat(input.value);
+  const monthData = budgetData[currentMonth];
+  const path = getPath(input.parentNode);
+  let obj = monthData.categories;
+  for (let p of path) obj = obj[p].sub;
+  obj[name].amount = isNaN(val)?0:val;
   updateBalance();
+}
+
+// --- Recurring instellen ---
+function updateRecurring(select,name){
+  const monthData = budgetData[currentMonth];
+  const path = getPath(select.parentNode);
+  let obj = monthData.categories;
+  for (let p of path) obj = obj[p].sub;
+  obj[name].recurring = select.value;
+}
+
+// --- Helper: pad van parent naar root bepalen ---
+function getPath(node){
+  const path = [];
+  while(node && !node.id){
+    const strong = node.querySelector("strong");
+    if(strong) path.unshift(strong.innerText);
+    node = node.parentNode.closest(".category, .sub-category");
+  }
+  return path;
 }
 
 // --- Start met 12 maanden standaard ---
