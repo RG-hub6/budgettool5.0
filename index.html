@@ -24,7 +24,22 @@ body <div id="loginForm">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Budgettool</title>
   <link rel="stylesheet" href="style.css">
-</head>
+</head><script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "API_KEY",
+    authDomain: "PROJECT.firebaseapp.com",
+    projectId: "PROJECT_ID",
+    appId: "APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  window.auth = getAuth(app);
+</script>
+<script src="script.js"></script>
+
 <body style="font-family: Arial, sans-serif; background: #fff; margin:0;">
 
   <!-- LOGINFORMULAIR -->
