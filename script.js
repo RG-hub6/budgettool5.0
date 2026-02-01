@@ -6,8 +6,11 @@ const months = [
 let currentMonth = "Januari";
 
 let data = {};
-months.forEach(m => data[m] = []);
+months.forEach(m => data[m] = { categories: {} });
 
+/* ======================
+   MAANDEN
+====================== */
 function renderMonthButtons() {
   const div = document.getElementById("month-buttons");
   div.innerHTML = "";
@@ -23,53 +26,90 @@ function renderMonthButtons() {
   });
 }
 
-function addItem() {
-  const name = document.getElementById("name").value;
-  const amount = parseFloat(document.getElementById("amount").value);
-  const type = document.getElementById("type").value;
-  const recurring = document.getElementById("recurring").value;
+/* ======================
+   CATEGORIEËN
+====================== */
+function addCategory(parentPath = []) {
+  const name = prompt("Naam categorie:");
+  if (!name) return;
 
-  if (!name || isNaN(amount)) return;
+  let obj = data[currentMonth].categories;
+  parentPath.forEach(p => obj = obj[p].sub);
 
-  data[currentMonth].push({ name, amount, type, recurring });
-
-  if (recurring === "maand") {
-    let start = months.indexOf(currentMonth);
-    for (let i = start + 1; i < months.length; i++) {
-      data[months[i]].push({ name, amount, type, recurring });
-    }
-  }
-
-  document.getElementById("name").value = "";
-  document.getElementById("amount").value = "";
-
+  obj[name] = { amount: 0, type: "expense", sub: {} };
   renderAll();
 }
 
-function renderList() {
-  const ul = document.getElementById("list");
-  ul.innerHTML = "";
-  data[currentMonth].forEach(item => {
-    const li = document.createElement("li");
-    li.innerText = `${item.name} — €${item.amount} (${item.type})`;
-    ul.appendChild(li);
+function renderCategories(obj, container, path = []) {
+  Object.keys(obj).forEach(key => {
+    const item = obj[key];
+
+    const div = document.createElement("div");
+    div.style.marginLeft = path.length * 20 + "px";
+    div.style.background = "#fff";
+    div.style.padding = "6px";
+    div.style.marginTop = "6px";
+    div.style.borderRadius = "6px";
+
+    div.innerHTML = `
+      <strong>${key}</strong>
+      <button onclick='addCategory(${JSON.stringify([...path, key])})'>+ sub</button>
+      <br>
+      <input type="number" placeholder="€"
+        value="${item.amount}"
+        onchange='updateAmount(${JSON.stringify([...path, key])}, this.value)'>
+      <select onchange='updateType(${JSON.stringify([...path, key])}, this.value)'>
+        <option value="expense" ${item.type==="expense"?"selected":""}>Uitgave</option>
+        <option value="income" ${item.type==="income"?"selected":""}>Inkomen</option>
+      </select>
+    `;
+
+    container.appendChild(div);
+    renderCategories(item.sub, container, [...path, key]);
   });
 }
 
-function calculate() {
+function updateAmount(path, value) {
+  let obj = data[currentMonth].categories;
+  path.forEach(p => obj = obj[p].sub ?? obj[p]);
+  obj.amount = parseFloat(value) || 0;
+  renderAll();
+}
+
+function updateType(path, value) {
+  let obj = data[currentMonth].categories;
+  path.forEach(p => obj = obj[p].sub ?? obj[p]);
+  obj.type = value;
+  renderAll();
+}
+
+/* ======================
+   BEREKENINGEN
+====================== */
+function calculateTotals() {
   let income = 0;
   let expense = 0;
 
-  data[currentMonth].forEach(i => {
-    if (i.type === "income") income += i.amount;
-    else expense += i.amount;
-  });
+  function walk(obj) {
+    Object.values(obj).forEach(i => {
+      if (i.amount) {
+        i.type === "income"
+          ? income += i.amount
+          : expense += i.amount;
+      }
+      walk(i.sub);
+    });
+  }
 
+  walk(data[currentMonth].categories);
   return { income, expense, balance: income - expense };
 }
 
+/* ======================
+   RENDER
+====================== */
 function renderSummary() {
-  const r = calculate();
+  const r = calculateTotals();
   document.getElementById("total-income").innerText = r.income.toFixed(2);
   document.getElementById("total-expense").innerText = r.expense.toFixed(2);
   document.getElementById("balance").innerText = r.balance.toFixed(2);
@@ -80,23 +120,26 @@ function renderChart() {
   const ctx = c.getContext("2d");
   ctx.clearRect(0,0,c.width,c.height);
 
-  const r = calculate();
-  const values = [r.income, r.expense, r.balance];
-  const colors = ["#4caf50","#f44336","#2196f3"];
-  const max = Math.max(...values, 1);
+  const r = calculateTotals();
+  const vals = [r.income, r.expense, r.balance];
+  const cols = ["#4caf50","#f44336","#2196f3"];
+  const max = Math.max(...vals,1);
 
-  values.forEach((v,i) => {
+  vals.forEach((v,i)=>{
     const h = (v/max)*150;
-    ctx.fillStyle = colors[i];
-    ctx.fillRect(60+i*110, 180-h, 50, h);
+    ctx.fillStyle = cols[i];
+    ctx.fillRect(60+i*110,180-h,50,h);
   });
 }
 
 function renderAll() {
   renderMonthButtons();
-  renderList();
   renderSummary();
   renderChart();
+
+  const app = document.getElementById("app");
+  app.innerHTML = "<button onclick='addCategory()'>+ Categorie</button>";
+  renderCategories(data[currentMonth].categories, app);
 }
 
 renderAll();
