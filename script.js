@@ -1,19 +1,12 @@
-let budgetData = {};
-let currentMonth = "Januari";
-
 const months = [
   "Januari","Februari","Maart","April","Mei","Juni",
   "Juli","Augustus","September","Oktober","November","December"
 ];
 
-months.forEach(m => {
-  budgetData[m] = {
-    categories: {},
-    totalIncome: 0,
-    totalExpense: 0,
-    balance: 0
-  };
-});
+let currentMonth = "Januari";
+
+let data = {};
+months.forEach(m => data[m] = []);
 
 function renderMonthButtons() {
   const div = document.getElementById("month-buttons");
@@ -30,40 +23,56 @@ function renderMonthButtons() {
   });
 }
 
-function renderAll() {
-  renderMonthButtons();
-  calculateMonth();
-  renderSummary();
-  renderChart();
-}
+function addItem() {
+  const name = document.getElementById("name").value;
+  const amount = parseFloat(document.getElementById("amount").value);
+  const type = document.getElementById("type").value;
+  const recurring = document.getElementById("recurring").value;
 
-function calculateMonth() {
-  let income = 0;
-  let expense = 0;
+  if (!name || isNaN(amount)) return;
 
-  function walk(obj) {
-    for (let k in obj) {
-      const item = obj[k];
-      if (item.amount) {
-        if (item.type === "income") income += item.amount;
-        else expense += item.amount;
-      }
-      walk(item.sub || {});
+  data[currentMonth].push({ name, amount, type, recurring });
+
+  if (recurring === "maand") {
+    let start = months.indexOf(currentMonth);
+    for (let i = start + 1; i < months.length; i++) {
+      data[months[i]].push({ name, amount, type, recurring });
     }
   }
 
-  walk(budgetData[currentMonth].categories);
+  document.getElementById("name").value = "";
+  document.getElementById("amount").value = "";
 
-  budgetData[currentMonth].totalIncome = income;
-  budgetData[currentMonth].totalExpense = expense;
-  budgetData[currentMonth].balance = income - expense;
+  renderAll();
+}
+
+function renderList() {
+  const ul = document.getElementById("list");
+  ul.innerHTML = "";
+  data[currentMonth].forEach(item => {
+    const li = document.createElement("li");
+    li.innerText = `${item.name} — €${item.amount} (${item.type})`;
+    ul.appendChild(li);
+  });
+}
+
+function calculate() {
+  let income = 0;
+  let expense = 0;
+
+  data[currentMonth].forEach(i => {
+    if (i.type === "income") income += i.amount;
+    else expense += i.amount;
+  });
+
+  return { income, expense, balance: income - expense };
 }
 
 function renderSummary() {
-  const m = budgetData[currentMonth];
-  document.getElementById("total-income").innerText = m.totalIncome.toFixed(2);
-  document.getElementById("total-expense").innerText = m.totalExpense.toFixed(2);
-  document.getElementById("balance").innerText = m.balance.toFixed(2);
+  const r = calculate();
+  document.getElementById("total-income").innerText = r.income.toFixed(2);
+  document.getElementById("total-expense").innerText = r.expense.toFixed(2);
+  document.getElementById("balance").innerText = r.balance.toFixed(2);
 }
 
 function renderChart() {
@@ -71,20 +80,23 @@ function renderChart() {
   const ctx = c.getContext("2d");
   ctx.clearRect(0,0,c.width,c.height);
 
-  const m = budgetData[currentMonth];
-  const values = [m.totalIncome, m.totalExpense, m.balance];
-  const labels = ["Inkomsten","Uitgaven","Saldo"];
+  const r = calculate();
+  const values = [r.income, r.expense, r.balance];
+  const colors = ["#4caf50","#f44336","#2196f3"];
   const max = Math.max(...values, 1);
 
   values.forEach((v,i) => {
-    const h = (v / max) * 150;
-    ctx.fillStyle = i === 0 ? "#4caf50" : i === 1 ? "#f44336" : "#2196f3";
-    ctx.fillRect(60 + i*100, 180 - h, 40, h);
-    ctx.fillStyle = "#000";
-    ctx.fillText(labels[i], 50 + i*100, 195);
-    ctx.fillText("€"+v.toFixed(0), 55 + i*100, 170 - h);
+    const h = (v/max)*150;
+    ctx.fillStyle = colors[i];
+    ctx.fillRect(60+i*110, 180-h, 50, h);
   });
 }
 
-renderAll();
+function renderAll() {
+  renderMonthButtons();
+  renderList();
+  renderSummary();
+  renderChart();
+}
 
+renderAll();
