@@ -2,18 +2,25 @@
 <html lang="nl">
 <head>
   <meta charset="UTF-8">
-  <title>Budgettool XL</title>
+  <title>Budgettool 5.0</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Budgettool XL</h1>
-  <p>Welkom! Beheer je inkomsten, uitgaven en categorieën. Voeg mappen en subcategorieën toe zoals in Notion!</p>
 
-  <div id="month-buttons"></div>
-  <div id="app"></div>
+<h1>📊 Budgettool 5.0</h1>
 
-  <button onclick="addNewMonth()">+ Nieuwe maand</button>
+<div id="month-buttons"></div>
 
-  <script src="script.js"></script>
+<div id="summary">
+  <p><strong>Inkomsten:</strong> € <span id="total-income">0</span></p>
+  <p><strong>Uitgaven:</strong> € <span id="total-expense">0</span></p>
+  <p><strong>Saldo:</strong> € <span id="balance">0</span></p>
+</div>
+
+<canvas id="chart" width="400" height="200"></canvas>
+
+<div id="app"></div>
+
+<script src="script.js"></script>
 </body>
 </html>
