@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Budgettool 5.0</title>
+
 <style>
 body {
   font-family: Arial, sans-serif;
@@ -52,10 +53,10 @@ input, select {
   margin:4px 0;
 }
 .badge {
-  padding:2px 6px;
-  border-radius:6px;
   font-size:11px;
   background:#e5e7eb;
+  border-radius:6px;
+  padding:2px 6px;
 }
 .income { color:green; }
 .expense { color:red; }
@@ -69,21 +70,24 @@ input, select {
 </header>
 
 <main>
-  <div class="panel">
-    <h3>Overzicht deze maand</h3>
-    <p>Inkomsten: €<span id="inc">0</span></p>
-    <p>Uitgaven: €<span id="exp">0</span></p>
-    <h3>Saldo: €<span id="bal">0</span></h3>
-  </div>
 
-  <div class="panel">
-    <h3>Categorieën</h3>
-    <button onclick="addCategory()">+ nieuwe categorie</button>
-    <div id="categories"></div>
-  </div>
+<div class="panel">
+  <h3>Overzicht deze maand</h3>
+  <p>Inkomsten: €<span id="inc">0</span></p>
+  <p>Uitgaven: €<span id="exp">0</span></p>
+  <h3>Saldo: €<span id="bal">0</span></h3>
+</div>
+
+<div class="panel">
+  <h3>Categorieën</h3>
+  <button onclick="addCategory()">+ nieuwe categorie</button>
+  <div id="categories"></div>
+</div>
+
 </main>
 
 <script>
+/* ================= DATA ================= */
 const data = {
   categories: []
 };
@@ -93,16 +97,22 @@ const months = [
   "Juli","Augustus","September","Oktober","November","December"
 ];
 
+let currentMonth = new Date().getMonth();
+
+/* ================= MAAND SELECT ================= */
 const monthSelect = document.getElementById("monthSelect");
 months.forEach((m,i)=>{
   const o=document.createElement("option");
   o.value=i; o.textContent=m;
   monthSelect.appendChild(o);
 });
-let currentMonth = new Date().getMonth();
-monthSelect.value = currentMonth;
-monthSelect.onchange = ()=>{currentMonth=+monthSelect.value; render();};
+monthSelect.value=currentMonth;
+monthSelect.onchange=()=>{
+  currentMonth=+monthSelect.value;
+  render();
+};
 
+/* ================= CATEGORIE ================= */
 function addCategory(parent){
   const name = prompt("Naam categorie:");
   if(!name) return;
@@ -111,56 +121,69 @@ function addCategory(parent){
   render();
 }
 
+/* ================= ITEM ================= */
 function addItem(cat){
   const label = prompt("Naam bedrag:");
   if(!label) return;
   const amount = parseFloat(prompt("Bedrag (€):"));
   if(isNaN(amount)) return;
-  const type = prompt("inkomen of uitgave?","uitgave");
+  const type = prompt("inkomen of uitgave","uitgave");
   const freq = prompt("dag / week / maand / jaar / eenmalig","maand");
+
   cat.items.push({
-    label, amount, type, freq,
+    label,
+    amount,
+    type,
+    freq,
     startMonth: currentMonth
   });
   render();
 }
 
-function calcItem(item, month){
-  let amt = item.amount;
+/* ================= BEREKENING (HIER ZIT DE FIX) ================= */
+function calcItem(item, monthIndex){
+  if(monthIndex < item.startMonth) return 0;
+
   switch(item.freq){
-    case "dag": amt *= 30; break;
-    case "week": amt *= 4.33; break;
-    case "maand": break;
-    case "jaar": amt = item.amount / 12; break;
+    case "dag": return item.amount * 30;
+    case "week": return item.amount * 4.33;
+    case "maand": return item.amount;
+    case "jaar": return item.amount / 12;
     case "eenmalig":
-      if(month !== item.startMonth) return 0;
-      break;
+      return monthIndex === item.startMonth ? item.amount : 0;
     default: return 0;
   }
-  return amt;
 }
 
+/* ================= TOTAAL ================= */
 function sumCategory(cat){
   let inc=0, exp=0;
+
   cat.items.forEach(i=>{
     const v = calcItem(i, currentMonth);
     if(i.type==="inkomen") inc+=v;
     else exp+=v;
   });
+
   cat.children.forEach(c=>{
-    const r=sumCategory(c);
+    const r = sumCategory(c);
     inc+=r.inc; exp+=r.exp;
   });
+
   return {inc,exp};
 }
 
-function renderCategory(cat, parentEl){
+/* ================= RENDER ================= */
+function renderCategory(cat, parent){
   const div=document.createElement("div");
   div.className="tree";
-  div.innerHTML=`<strong>${cat.name}</strong>
-    <button class="small" onclick='addItem(ref)'>+ bedrag</button>
-    <button class="small" onclick='addCategory(ref)'>+ subcategorie</button>`;
-  parentEl.appendChild(div);
+  div.innerHTML=`
+    <strong>${cat.name}</strong>
+    <button class="small" onclick="addItem(ref)">+ bedrag</button>
+    <button class="small" onclick="addCategory(ref)">+ subcategorie</button>
+  `;
+  parent.appendChild(div);
+
   cat.items.forEach(i=>{
     const el=document.createElement("div");
     el.className="item";
@@ -173,6 +196,7 @@ function renderCategory(cat, parentEl){
     `;
     div.appendChild(el);
   });
+
   cat.children.forEach(c=>{
     window.ref=c;
     renderCategory(c, div);
@@ -181,18 +205,18 @@ function renderCategory(cat, parentEl){
 
 function render(){
   let inc=0, exp=0;
-  const cats=document.getElementById("categories");
-  cats.innerHTML="";
+  const root=document.getElementById("categories");
+  root.innerHTML="";
+
   data.categories.forEach(c=>{
     const r=sumCategory(c);
     inc+=r.inc; exp+=r.exp;
     window.ref=c;
-    renderCategory(c, cats);
+    renderCategory(c, root);
   });
-  inc=Math.round(inc*100)/100;
-  exp=Math.round(exp*100)/100;
-  document.getElementById("inc").textContent=inc;
-  document.getElementById("exp").textContent=exp;
+
+  document.getElementById("inc").textContent=inc.toFixed(2);
+  document.getElementById("exp").textContent=exp.toFixed(2);
   document.getElementById("bal").textContent=(inc-exp).toFixed(2);
 }
 
