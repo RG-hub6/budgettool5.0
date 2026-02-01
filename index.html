@@ -12,8 +12,8 @@
 <div id="month-buttons"></div>
 
 <div id="summary">
-  <div>Inkomsten: € <span id="total-income">0</span></div>
-  <div>Uitgaven: € <span id="total-expense">0</span></div>
+  <div>Inkomsten: € <span id="income">0</span></div>
+  <div>Uitgaven: € <span id="expense">0</span></div>
   <div><strong>Saldo: € <span id="balance">0</span></strong></div>
 </div>
 
@@ -21,27 +21,22 @@
 
 <hr>
 
-<div id="editor">
-  <h2>Post toevoegen</h2>
+<h2>Nieuwe invoer</h2>
 
-  <input id="name" placeholder="Naam (bv. Boodschappen)">
-  <input id="amount" type="number" placeholder="Bedrag">
+<input id="categoryPath" placeholder="Categorie (bv. Sport > Triatlon)">
+<input id="amount" type="number" placeholder="Bedrag">
 
-  <select id="type">
-    <option value="expense">Uitgave</option>
-    <option value="income">Inkomen</option>
-  </select>
+<select id="type">
+  <option value="expense">Uitgave</option>
+  <option value="income">Inkomen</option>
+</select>
 
-  <select id="recurring">
-    <option value="eenmalig">Eenmalig</option>
-    <option value="maand">Maandelijks</option>
-  </select>
+<button onclick="addEntry()">Toevoegen</button>
 
-  <button onclick="addItem()">Toevoegen</button>
-</div>
+<hr>
 
 <h2>Overzicht deze maand</h2>
-<ul id="list"></ul>
+<div id="overview"></div>
 
 <script src="script.js"></script>
 </body>
