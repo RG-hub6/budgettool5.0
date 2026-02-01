@@ -4,34 +4,45 @@ const months = [
 ];
 let currentMonth = 0;
 
+// Data per maand
 let data = {};
 months.forEach(m => data[m] = {categories:{}});
 
-function renderMonths() {
+// Helper: maak automatisch een lege supercategorie als er geen categorie is
+function ensureCategoryExists(month){
+  const cat = data[month].categories;
+  if(Object.keys(cat).length === 0){
+    cat["Algemeen"] = {items:[], sub:{}};
+  }
+}
+
+// Maandknoppen
+function renderMonths(){
   const div = document.getElementById("months");
   div.innerHTML = "";
   months.forEach((m,i)=>{
-    const b=document.createElement("button");
+    const b = document.createElement("button");
     b.innerText = m;
     if(i===currentMonth) b.className="active";
-    b.onclick=()=>{currentMonth=i; render();}
+    b.onclick = () => {currentMonth=i; render();}
     div.appendChild(b);
   });
 }
 
-function calculate() {
+// Bereken totaal inkomsten/uitgaven
+function calculate(){
   let inc=0, exp=0;
   function walk(categ){
     Object.values(categ).forEach(cat=>{
       cat.items.forEach(item=>{
-        let amount = item.amount;
+        let amt = item.amount;
         switch(item.freq){
-          case "day": amount *= 30; break;
-          case "week": amount *= 4.33; break;
-          case "year": amount /= 12; break;
+          case "day": amt *= 30; break;
+          case "week": amt *= 4.33; break;
+          case "year": amt /= 12; break;
         }
-        if(item.kind==="income") inc+=amount;
-        else exp+=amount;
+        if(item.kind==="income") inc+=amt;
+        else exp+=amt;
       });
       walk(cat.sub);
     });
@@ -40,14 +51,11 @@ function calculate() {
   return {inc, exp, bal: inc-exp};
 }
 
-function renderOverview() {
+// Render overzicht
+function renderOverview(){
   const div = document.getElementById("overview");
   div.innerHTML = "";
-
-  // Zorg dat er altijd minstens 1 supercategorie is
-  if(Object.keys(data[months[currentMonth]].categories).length===0){
-    data[months[currentMonth]].categories["Algemeen"]={items:[], sub:{}};
-  }
+  ensureCategoryExists(months[currentMonth]);
 
   function walk(categ, container){
     Object.keys(categ).forEach(key=>{
@@ -55,21 +63,22 @@ function renderOverview() {
       const catDiv = document.createElement("div");
       catDiv.className = "category";
 
+      // Titel +Sub knop
       const titleDiv = document.createElement("div");
       titleDiv.innerHTML = `<strong>${key}</strong>`;
-      catDiv.appendChild(titleDiv);
-
       const addSub = document.createElement("button");
       addSub.innerText = "+Sub";
-      addSub.className="small";
+      addSub.className = "small";
       addSub.onclick = ()=>{
         const name = prompt("Naam subcategorie:");
         if(!name) return;
-        cat.sub[name]={items:[], sub:{}};
+        cat.sub[name] = {items:[], sub:{}};
         render();
       };
       titleDiv.appendChild(addSub);
+      catDiv.appendChild(titleDiv);
 
+      // Items
       cat.items.forEach((item,i)=>{
         const iDiv = document.createElement("div");
         iDiv.className="item";
@@ -82,7 +91,7 @@ function renderOverview() {
         amtInput.onchange=()=>{item.amount=parseFloat(amtInput.value); render();}
         const freqSelect = document.createElement("select");
         ["once","day","week","month","year"].forEach(f=>{
-          const opt=document.createElement("option");
+          const opt = document.createElement("option");
           opt.value=f; opt.innerText=f;
           if(f===item.freq) opt.selected=true;
           freqSelect.appendChild(opt);
@@ -91,7 +100,7 @@ function renderOverview() {
 
         const kindSelect = document.createElement("select");
         ["income","expense"].forEach(k=>{
-          const opt=document.createElement("option");
+          const opt = document.createElement("option");
           opt.value=k; opt.innerText=k;
           if(k===item.kind) opt.selected=true;
           kindSelect.appendChild(opt);
@@ -112,7 +121,7 @@ function renderOverview() {
         catDiv.appendChild(iDiv);
       });
 
-      // inline +Nieuw vak
+      // +Nieuw vak inline
       const newDiv = document.createElement("div");
       newDiv.className="new-entry";
       const nameInp = document.createElement("input"); nameInp.placeholder="Naam";
@@ -149,6 +158,7 @@ function renderOverview() {
   walk(data[months[currentMonth]].categories, div);
 }
 
+// Grafiek
 function renderChart(t){
   const c=document.getElementById("chart");
   const ctx=c.getContext("2d");
@@ -163,6 +173,7 @@ function renderChart(t){
   });
 }
 
+// Alles renderen
 function render(){
   renderMonths();
   const t = calculate();
@@ -174,4 +185,3 @@ function render(){
 }
 
 render();
-
