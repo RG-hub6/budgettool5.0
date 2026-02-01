@@ -29,8 +29,9 @@ function calculate() {
       cat.items.forEach(item=>{
         let amount = item.amount;
         switch(item.freq){
-          case "week": amount*=4.33; break;
-          case "year": amount/=12; break;
+          case "day": amount *= 30; break;
+          case "week": amount *= 4.33; break;
+          case "year": amount /= 12; break;
         }
         if(item.kind==="income") inc+=amount;
         else exp+=amount;
@@ -69,25 +70,7 @@ function renderOverview() {
       };
       titleDiv.appendChild(addSub);
 
-      // +Nieuw item knop
-      const addItemBtn = document.createElement("button");
-      addItemBtn.innerText = "+Nieuw";
-      addItemBtn.className="small";
-      addItemBtn.onclick = ()=>{
-        const name = prompt("Naam item:");
-        if(!name) return;
-        let amt = parseFloat(prompt("Bedrag:"));
-        if(isNaN(amt)) return;
-        let kind = prompt("income of expense? (i/e):");
-        kind = (kind==="i")?"income":"expense";
-        let freq = prompt("frequentie: once, day, week, month, year:");
-        if(!["once","day","week","month","year"].includes(freq)) freq="once";
-        cat.items.push({name, amount:amt, kind, freq});
-        render();
-      };
-      titleDiv.appendChild(addItemBtn);
-
-      // Items tonen
+      // Items weergeven
       cat.items.forEach((item,i)=>{
         const iDiv = document.createElement("div");
         iDiv.className="item";
@@ -98,6 +81,24 @@ function renderOverview() {
         amtInput.value = item.amount.toFixed(2);
         amtInput.type="number";
         amtInput.onchange=()=>{item.amount=parseFloat(amtInput.value); render();}
+        const freqSelect = document.createElement("select");
+        ["once","day","week","month","year"].forEach(f=>{
+          const opt=document.createElement("option");
+          opt.value=f; opt.innerText=f;
+          if(f===item.freq) opt.selected=true;
+          freqSelect.appendChild(opt);
+        });
+        freqSelect.onchange=()=>{item.freq=freqSelect.value; render();}
+
+        const kindSelect = document.createElement("select");
+        ["income","expense"].forEach(k=>{
+          const opt=document.createElement("option");
+          opt.value=k; opt.innerText=k;
+          if(k===item.kind) opt.selected=true;
+          kindSelect.appendChild(opt);
+        });
+        kindSelect.onchange=()=>{item.kind=kindSelect.value; render();}
+
         const delBtn = document.createElement("button");
         delBtn.innerText="❌";
         delBtn.className="small";
@@ -105,13 +106,50 @@ function renderOverview() {
           cat.items.splice(i,1);
           render();
         };
+
         iDiv.appendChild(nameInput);
         iDiv.appendChild(amtInput);
+        iDiv.appendChild(freqSelect);
+        iDiv.appendChild(kindSelect);
         iDiv.appendChild(delBtn);
+
         catDiv.appendChild(iDiv);
       });
 
+      // +Nieuw vak voor inline toevoegen
+      const newDiv = document.createElement("div");
+      newDiv.className="new-entry";
+
+      const nameInp = document.createElement("input"); nameInp.placeholder="Naam";
+      const amtInp = document.createElement("input"); amtInp.placeholder="Bedrag"; amtInp.type="number";
+      const freqInp = document.createElement("select");
+      ["once","day","week","month","year"].forEach(f=>{
+        const opt=document.createElement("option"); opt.value=f; opt.innerText=f; freqInp.appendChild(opt);
+      });
+      const kindInp = document.createElement("select");
+      ["income","expense"].forEach(k=>{
+        const opt=document.createElement("option"); opt.value=k; opt.innerText=k; kindInp.appendChild(opt);
+      });
+      const addBtn = document.createElement("button"); addBtn.innerText="+Toevoegen";
+      addBtn.onclick = ()=>{
+        const n = nameInp.value.trim();
+        let a = parseFloat(amtInp.value);
+        if(!n || isNaN(a)) return;
+        cat.items.push({name:n, amount:a, freq:freqInp.value, kind:kindInp.value});
+        render();
+      };
+
+      newDiv.appendChild(nameInp);
+      newDiv.appendChild(amtInp);
+      newDiv.appendChild(freqInp);
+      newDiv.appendChild(kindInp);
+      newDiv.appendChild(addBtn);
+
+      catDiv.appendChild(newDiv);
+
       container.appendChild(catDiv);
+
+      // Recursief voor subcategorieën
       walk(cat.sub, catDiv);
     });
   }
