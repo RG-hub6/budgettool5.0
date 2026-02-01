@@ -1,3 +1,22 @@
+const auth = window.auth;
+
+const loginForm = document.getElementById("loginForm");
+const budgetApp = document.getElementById("budgetApp");
+
+import("https://www.gstatic.com/firebasejs/10.14.0/firebase-auth.js").then(
+({ createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged }) => {
+
+  signupBtn.onclick = () =>
+    createUserWithEmailAndPassword(auth, email.value, password.value);
+
+  loginBtn.onclick = () =>
+    signInWithEmailAndPassword(auth, email.value, password.value);
+
+  onAuthStateChanged(auth, user => {
+    loginForm.style.display = user ? "none" : "block";
+    budgetApp.style.display = user ? "block" : "none";
+  });
+});
 const authInstance = window.auth;
 
 // Account aanmaken
