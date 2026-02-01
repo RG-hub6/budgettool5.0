@@ -1,7 +1,4 @@
-// === BEGIN ULTIEME WORKING BUDGETTOOL ===
-
-// Maanden
-const months = [
+const mymonths = [
   "Januari","Februari","Maart","April","Mei","Juni",
   "Juli","Augustus","September","Oktober","November","December"
 ];
@@ -9,7 +6,7 @@ let currentMonth = 0;
 
 // Data per maand
 let data = {};
-months.forEach(m => data[m] = {categories:{}});
+mymonths.forEach(m => data[m] = {categories:{}});
 
 // Helper: maak automatisch een lege supercategorie als er geen categorie is
 function ensureCategoryExists(month){
@@ -23,7 +20,7 @@ function ensureCategoryExists(month){
 function renderMonths(){
   const div = document.getElementById("months");
   div.innerHTML = "";
-  months.forEach((m,i)=>{
+  mymonths.forEach((m,i)=>{
     const b = document.createElement("button");
     b.innerText = m;
     if(i===currentMonth) b.className="active";
@@ -50,7 +47,7 @@ function calculate(){
       walk(cat.sub);
     });
   }
-  walk(data[months[currentMonth]].categories);
+  walk(data[mymonths[currentMonth]].categories);
   return {inc, exp, bal: inc-exp};
 }
 
@@ -58,7 +55,7 @@ function calculate(){
 function renderOverview(){
   const div = document.getElementById("overview");
   div.innerHTML = "";
-  ensureCategoryExists(months[currentMonth]);
+  ensureCategoryExists(mymonths[currentMonth]);
 
   function walk(categ, container){
     Object.keys(categ).forEach(key=>{
@@ -66,7 +63,7 @@ function renderOverview(){
       const catDiv = document.createElement("div");
       catDiv.className = "category";
 
-      // Titel +Sub knop
+      // Titel + Sub knop
       const titleDiv = document.createElement("div");
       titleDiv.innerHTML = `<strong>${key}</strong>`;
       const addSub = document.createElement("button");
@@ -81,42 +78,46 @@ function renderOverview(){
       titleDiv.appendChild(addSub);
       catDiv.appendChild(titleDiv);
 
-      // Items
-      cat.items.forEach(item=>{
+      // Items renderen met volledige aanpas- en verwijderfunctionaliteit
+      cat.items.forEach(item => {
         const iDiv = document.createElement("div");
-        iDiv.className="item";
+        iDiv.className = "item";
 
+        // Naam
         const nameInput = document.createElement("input");
         nameInput.value = item.name;
-        nameInput.onchange=()=>{item.name=nameInput.value; render();}
+        nameInput.onchange = () => { item.name = nameInput.value; render(); }
 
+        // Bedrag
         const amtInput = document.createElement("input");
         amtInput.value = item.amount.toFixed(2);
-        amtInput.type="number";
-        amtInput.onchange=()=>{item.amount=parseFloat(amtInput.value); render();}
+        amtInput.type = "number";
+        amtInput.onchange = () => { item.amount = parseFloat(amtInput.value); render(); }
 
+        // Frequentie
         const freqSelect = document.createElement("select");
-        ["once","day","week","month","year"].forEach(f=>{
+        ["once","day","week","month","year"].forEach(f => {
           const opt = document.createElement("option");
-          opt.value=f; opt.innerText=f;
-          if(f===item.freq) opt.selected=true;
+          opt.value = f; opt.innerText = f;
+          if(f === item.freq) opt.selected = true;
           freqSelect.appendChild(opt);
         });
-        freqSelect.onchange=()=>{item.freq=freqSelect.value; render();}
+        freqSelect.onchange = () => { item.freq = freqSelect.value; render(); }
 
+        // Soort
         const kindSelect = document.createElement("select");
-        ["income","expense"].forEach(k=>{
+        ["income","expense"].forEach(k => {
           const opt = document.createElement("option");
-          opt.value=k; opt.innerText=k;
-          if(k===item.kind) opt.selected=true;
+          opt.value = k; opt.innerText = k;
+          if(k === item.kind) opt.selected = true;
           kindSelect.appendChild(opt);
         });
-        kindSelect.onchange=()=>{item.kind=kindSelect.value; render();}
+        kindSelect.onchange = () => { item.kind = kindSelect.value; render(); }
 
-        // ❌ delete button werkt altijd
+        // Delete button
         const delBtn = document.createElement("button");
-        delBtn.innerText="❌";
-        delBtn.className="small";
+        delBtn.innerText = "❌";
+        delBtn.className = "small";
         delBtn.onclick = () => {
           const index = cat.items.indexOf(item);
           if(index > -1){
@@ -130,33 +131,23 @@ function renderOverview(){
         iDiv.appendChild(freqSelect);
         iDiv.appendChild(kindSelect);
         iDiv.appendChild(delBtn);
-
         catDiv.appendChild(iDiv);
       });
 
       // +Nieuw vak inline
       const newDiv = document.createElement("div");
-      newDiv.className="new-entry";
-
-      const nameInp = document.createElement("input"); 
-      nameInp.placeholder="Naam";
-
-      const amtInp = document.createElement("input"); 
-      amtInp.placeholder="Bedrag"; 
-      amtInp.type="number";
-
+      newDiv.className = "new-entry";
+      const nameInp = document.createElement("input"); nameInp.placeholder="Naam";
+      const amtInp = document.createElement("input"); amtInp.placeholder="Bedrag"; amtInp.type="number";
       const freqInp = document.createElement("select");
       ["once","day","week","month","year"].forEach(f=>{
         const opt=document.createElement("option"); opt.value=f; opt.innerText=f; freqInp.appendChild(opt);
       });
-
       const kindInp = document.createElement("select");
       ["income","expense"].forEach(k=>{
         const opt=document.createElement("option"); opt.value=k; opt.innerText=k; kindInp.appendChild(opt);
       });
-
-      const addBtn = document.createElement("button"); 
-      addBtn.innerText="+Toevoegen";
+      const addBtn = document.createElement("button"); addBtn.innerText="+Toevoegen";
       addBtn.onclick = ()=>{
         const n = nameInp.value.trim();
         let a = parseFloat(amtInp.value);
@@ -164,7 +155,6 @@ function renderOverview(){
         cat.items.push({name:n, amount:a, freq:freqInp.value, kind:kindInp.value});
         nameInp.value=""; amtInp.value=""; render();
       };
-
       newDiv.appendChild(nameInp);
       newDiv.appendChild(amtInp);
       newDiv.appendChild(freqInp);
@@ -178,7 +168,7 @@ function renderOverview(){
     });
   }
 
-  walk(data[months[currentMonth]].categories, div);
+  walk(data[mymonths[currentMonth]].categories, div);
 }
 
 // Grafiek
@@ -209,4 +199,3 @@ function render(){
 
 render();
 
-// === EINDE ULTIEME WORKING BUDGETTOOL ===
