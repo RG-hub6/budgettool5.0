@@ -54,7 +54,7 @@ authInstance.onAuthStateChanged(user => {
   }
 });
 
-const months = [
+const mymonths = [
   "Januari","Februari","Maart","April","Mei","Juni",
   "Juli","Augustus","September","Oktober","November","December"
 ];
@@ -103,7 +103,7 @@ function calculate(){
       walk(cat.sub);
     });
   }
-  walk(data[months[currentMonth]].categories);
+  walk(data[mymonths[currentMonth]].categories);
   return {inc, exp, bal: inc-exp};
 }
 
@@ -111,7 +111,7 @@ function calculate(){
 function renderOverview(){
   const div = document.getElementById("overview");
   div.innerHTML = "";
-  ensureCategoryExists(months[currentMonth]);
+  ensureCategoryExists(mymonths[currentMonth]);
 
   function walk(categ, container){
     Object.keys(categ).forEach(key=>{
