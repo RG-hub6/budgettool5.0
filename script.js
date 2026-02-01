@@ -64,20 +64,28 @@ function updateIncome() {
 function updateBalance() {
   const monthData = budgetData[currentMonth];
   let totalIncome = monthData.income;
-  let totalExpenses = calculateExpenses(monthData.categories);
-  monthData.balance = totalIncome - totalExpenses;
+  let totalExpenses = calculateTotals(monthData.categories);
+  monthData.balance = totalIncome - totalExpenses.expenses + totalExpenses.incomes;
   document.getElementById("balance").innerText = monthData.balance.toFixed(2);
 }
 
-// --- Recursief uitgaven/income berekenen ---
-function calculateExpenses(categories) {
-  let sum = 0;
+// --- Recursief inkomsten en uitgaven berekenen ---
+function calculateTotals(categories) {
+  let expenses = 0;
+  let incomes = 0;
   for (let key in categories) {
     const item = categories[key];
-    if (item.amount && item.type === "expense") sum += item.amount;
-    if (item.sub) sum += calculateExpenses(item.sub);
+    if (item.amount) {
+      if(item.type==="expense") expenses += item.amount;
+      else incomes += item.amount;
+    }
+    if(item.sub) {
+      const subTotals = calculateTotals(item.sub);
+      expenses += subTotals.expenses;
+      incomes += subTotals.incomes;
+    }
   }
-  return sum;
+  return {expenses, incomes};
 }
 
 // --- Categorie/subcategorie toevoegen ---
@@ -89,8 +97,7 @@ function addCategory(parent) {
   const newDiv = document.createElement("div");
   newDiv.className = parent ? "sub-category" : "category";
   const level = parent ? (parent.dataset.level ? parseInt(parent.dataset.level)+1 : 1) : 0;
-  const color = colors[level % colors.length];
-  newDiv.style.backgroundColor = color;
+  newDiv.style.backgroundColor = colors[level % colors.length];
   newDiv.dataset.level = level;
 
   newDiv.innerHTML = `
@@ -127,8 +134,7 @@ function addCategory(parent) {
 // --- Toggle subcategorie inklappen ---
 function toggleSub(el) {
   const subDiv = el.parentNode.querySelector(".sub");
-  if (subDiv.style.display === "none") subDiv.style.display = "block";
-  else subDiv.style.display = "none";
+  subDiv.style.display = (subDiv.style.display==="none")?"block":"none";
 }
 
 // --- Uitgaven/Inkomen updaten ---
@@ -140,17 +146,20 @@ function updateAmount(input,name){
   for (let p of path) obj = obj[p].sub;
   obj[name].amount = isNaN(val)?0:val;
 
-  applyRecurring(name,obj[name]); // automatisch kopiëren naar volgende maanden
+  applyRecurring(name,obj[name]);
   updateBalance();
 }
 
-// --- Type updaten (income/expense) ---
+// --- Type updaten ---
 function updateType(select,name){
   const monthData = budgetData[currentMonth];
   const path = getPath(select.parentNode);
   let obj = monthData.categories;
   for (let p of path) obj = obj[p].sub;
   obj[name].type = select.value;
+
+  applyRecurring(name,obj[name]);
+  updateBalance();
 }
 
 // --- Recurring updaten ---
@@ -161,7 +170,8 @@ function updateRecurring(select,name){
   for (let p of path) obj = obj[p].sub;
   obj[name].recurring = select.value;
 
-  applyRecurring(name,obj[name]); // direct toepassen
+  applyRecurring(name,obj[name]);
+  updateBalance();
 }
 
 // --- Helper: pad van parent naar root bepalen ---
@@ -181,19 +191,12 @@ function applyRecurring(name,item){
 
   const months = Object.keys(budgetData);
   const currentIndex = months.indexOf(currentMonth);
-  let repeat = 0;
+  const repeatMonths = months.slice(currentIndex+1);
 
-  if(item.recurring==="week") repeat = 4; // ruwe schatting 4 weken/maand
-  else if(item.recurring==="maand") repeat = months.length - currentIndex -1;
-  else if(item.recurring==="jaar") repeat = months.length - currentIndex -1; // 1 jaar = toevoegen aan volgende maand voor demo
-  else if(item.recurring==="dag") repeat = 30; // ruwe schatting 30 dagen/maand
-
-  for(let i=1;i<=repeat;i++){
-    const month = months[currentIndex+i];
-    if(!month) break;
-    if(!budgetData[month].categories[name]) budgetData[month].categories[name] = { ...item, sub:{...item.sub} };
-    else budgetData[month].categories[name] = { ...item, sub:{...item.sub} };
-  }
+  repeatMonths.forEach(month=>{
+    const monthObj = budgetData[month];
+    if(!monthObj.categories[name]) monthObj.categories[name] = { ...item, sub:{...item.sub} };
+  });
 }
 
 // --- Start met 12 maanden standaard ---
@@ -203,4 +206,3 @@ function applyRecurring(name,item){
 currentMonth = "Januari";
 renderMonthButtons();
 renderMonth();
-
