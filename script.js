@@ -79,51 +79,48 @@ function renderOverview(){
       catDiv.appendChild(titleDiv);
 
       // Items renderen met volledige aanpas- en verwijderfunctionaliteit
-      cat.items.forEach(item => {
+      cat.items.forEach((item, i)=>{
         const iDiv = document.createElement("div");
         iDiv.className = "item";
 
         // Naam
         const nameInput = document.createElement("input");
         nameInput.value = item.name;
-        nameInput.onchange = () => { item.name = nameInput.value; render(); }
+        nameInput.onchange = ()=>{ item.name = nameInput.value; render(); }
 
         // Bedrag
         const amtInput = document.createElement("input");
         amtInput.value = item.amount.toFixed(2);
         amtInput.type = "number";
-        amtInput.onchange = () => { item.amount = parseFloat(amtInput.value); render(); }
+        amtInput.onchange = ()=>{ item.amount = parseFloat(amtInput.value); render(); }
 
         // Frequentie
         const freqSelect = document.createElement("select");
-        ["once","day","week","month","year"].forEach(f => {
+        ["once","day","week","month","year"].forEach(f=>{
           const opt = document.createElement("option");
           opt.value = f; opt.innerText = f;
-          if(f === item.freq) opt.selected = true;
+          if(f===item.freq) opt.selected = true;
           freqSelect.appendChild(opt);
         });
-        freqSelect.onchange = () => { item.freq = freqSelect.value; render(); }
+        freqSelect.onchange=()=>{ item.freq=freqSelect.value; render(); }
 
         // Soort
         const kindSelect = document.createElement("select");
-        ["income","expense"].forEach(k => {
+        ["income","expense"].forEach(k=>{
           const opt = document.createElement("option");
           opt.value = k; opt.innerText = k;
-          if(k === item.kind) opt.selected = true;
+          if(k===item.kind) opt.selected = true;
           kindSelect.appendChild(opt);
         });
-        kindSelect.onchange = () => { item.kind = kindSelect.value; render(); }
+        kindSelect.onchange=()=>{ item.kind=kindSelect.value; render(); }
 
         // Delete button
         const delBtn = document.createElement("button");
         delBtn.innerText = "❌";
         delBtn.className = "small";
-        delBtn.onclick = () => {
-          const index = cat.items.indexOf(item);
-          if(index > -1){
-            cat.items.splice(index,1);
-            render();
-          }
+        delBtn.onclick=()=>{
+          cat.items.splice(i,1);
+          render();
         };
 
         iDiv.appendChild(nameInput);
@@ -131,6 +128,7 @@ function renderOverview(){
         iDiv.appendChild(freqSelect);
         iDiv.appendChild(kindSelect);
         iDiv.appendChild(delBtn);
+
         catDiv.appendChild(iDiv);
       });
 
