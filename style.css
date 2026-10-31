@@ -1,59 +1,933 @@
-body {
-  #loginForm {
-  margin: 20px;
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Budgettool 5.0</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#07060f; --bg2:#0f0b24; --panel:#15122b; --panel2:#1d1840;
+  --line:rgba(255,255,255,0.08); --text:#e8e6f5; --muted:#9a96b8;
+  --accent:#6d5efc; --accent2:#8b5cf6;
+  --green:#16a34a; --red:#dc2626; --blue:#2563eb;
+  --t-green:#4ade80; --t-red:#f87171; --t-blue:#60a5fa;
 }
-#budgetApp {
-  margin: 20px;
+*{ box-sizing:border-box; }
+body{
+  font-family:"Segoe UI",Roboto,Arial,sans-serif;
+  background:linear-gradient(160deg,var(--bg) 0%,#0b0a1e 45%,#150d33 100%) fixed;
+  color:var(--text); margin:0; min-height:100vh;
 }
-font-family: Arial, sans-serif;
-  background: #f4f6f8;
-  padding: 20px;
-}
-h1 { margin-bottom: 10px; }
-#months button {
-  margin: 3px;
-  padding: 6px 10px;
-  border: none;
-  cursor: pointer;
-}
-.active {
-  background: #2196f3;
-  color: white;
-}
-.summary {
-  display: flex;
-  gap: 20px;
-  margin: 15px 0;
-  font-weight: bold;
-}
-canvas { background: white; border-radius: 6px; }
-.category, .sub {
-  margin-left: 20px;
-  padding-left: 10px;
-  border-left: 2px solid #ccc;
-  margin-top: 5px;
-}
-.item {
-  display: flex;
-  gap: 5px;
-  margin: 3px 0;
-  align-items: center;
-}
-input, select {
-  padding: 4px;
-  font-size: 0.9em;
-}
-button.small {
-  padding: 2px 6px;
-  font-size: 0.8em;
-}
-.new-entry {
-  margin-top: 5px;
-  margin-left: 20px;
-  display: flex;
-  gap: 5px;
-}
-#loginForm { max-width:400px; margin:40px auto; }
+h1,h2,h3,h4{ margin:0 0 10px 0; }
+h3{ font-size:1.05em; }
 
-/* NIEUW: cirkeldiagram */
-.pie-box { max-width: 400px; margin: 15px auto; background: white; padding: 10px; border-radius: 6px; }
+/* ---------- Header ---------- */
+header{
+  position:sticky; top:0; z-index:50; direction:ltr;
+  display:flex; align-items:center; gap:14px;
+  padding:12px 16px;
+  background:rgba(10,8,28,0.85); backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+header .titles{ display:flex; flex-direction:column; }
+header h1{ font-size:1.2em; margin:0; }
+header .sub{ font-size:12px; color:var(--muted); }
+.menu-btn{
+  width:44px; height:44px; border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+  padding:0; flex-shrink:0;
+}
+.menu-btn span{ display:block; width:20px; height:2px; background:white; border-radius:2px; }
+.gear-btn{
+  margin-left:auto; width:44px; height:44px; border-radius:14px; padding:0; flex-shrink:0;
+  font-size:22px; line-height:1;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+}
+
+/* ---------- Zijmenu's ---------- */
+.backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,0.6);
+  opacity:0; pointer-events:none; transition:opacity .25s; z-index:80;
+}
+.backdrop.open{ opacity:1; pointer-events:auto; }
+.sidebar{
+  position:fixed; top:0; bottom:0; width:270px; max-width:82vw;
+  background:linear-gradient(180deg,#120d2e,#070612);
+  transition:transform .28s ease;
+  z-index:90; display:flex; flex-direction:column; padding:18px 14px; overflow-y:auto;
+}
+#sidebar{ left:0; border-right:1px solid var(--line); transform:translateX(-102%); }
+#sidebar.open{ transform:translateX(0); box-shadow:10px 0 40px rgba(0,0,0,0.5); }
+#settingsBar{ right:0; border-left:1px solid var(--line); transform:translateX(102%); }
+#settingsBar.open{ transform:translateX(0); box-shadow:-10px 0 40px rgba(0,0,0,0.5); }
+.sidebar .side-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sidebar .side-head strong{ font-size:1.1em; }
+.sidebar .close{ background:rgba(255,255,255,0.08); width:34px; height:34px; border-radius:10px; padding:0; }
+.side-label{ font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin:14px 6px 6px; }
+.side-item{
+  display:block; width:100%; text-align:start;
+  background:transparent; color:var(--text);
+  padding:11px 14px; border-radius:12px; margin-bottom:3px; font-size:15px;
+}
+.side-item:hover{ background:rgba(255,255,255,0.07); }
+.side-item.active{ background:linear-gradient(135deg,var(--accent),var(--accent2)); font-weight:bold; }
+
+/* ---------- Basis ---------- */
+main{ padding:16px; max-width:900px; margin:0 auto; }
+.panel{
+  background:linear-gradient(160deg,var(--panel),#100c24);
+  border:1px solid var(--line);
+  padding:18px; border-radius:20px; margin-bottom:16px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.35);
+}
+.panel-head{ cursor:pointer; position:relative; padding-right:30px; user-select:none; }
+.panel-head::after{ content:"▾"; position:absolute; right:0; top:0; color:var(--muted); font-size:1.1em; }
+.panel.collapsed .panel-head{ margin-bottom:0; }
+.panel.collapsed .panel-head::after{ content:"▸"; }
+.panel.collapsed > *:not(.panel-head){ display:none !important; }
+
+button{
+  padding:8px 14px; border:none; border-radius:12px; cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent2)); color:white; font-size:14px;
+}
+button:hover{ filter:brightness(1.12); }
+button.small{ font-size:12px; padding:5px 10px; border-radius:10px; }
+input, select{
+  padding:9px 12px; margin:4px 0; border-radius:12px;
+  border:1px solid var(--line); background:#0c0920; color:var(--text); font-size:14px;
+}
+input:focus, select:focus{ outline:2px solid var(--accent); }
+select option{ background:#0c0920; color:var(--text); }
+input[type=checkbox]{ accent-color:var(--accent); margin-right:4px; }
+label{ margin-right:10px; }
+canvas{ max-width:100%; }
+.pie-box{ max-width:400px; margin:0 auto; }
+.hint{ font-size:13px; color:var(--muted); margin-top:0; }
+.empty{ display:none; text-align:center; color:var(--muted); }
+.income{ color:var(--t-green); }
+.expense{ color:var(--t-red); }
+.saving{ color:var(--t-blue); }
+.positive{ color:var(--t-green); }
+.negative{ color:var(--t-red); }
+.row{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); }
+.row.total{ font-size:1.2em; font-weight:bold; border-bottom:none; padding-top:14px; }
+.cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:10px 0; }
+.card{ border-radius:16px; padding:12px; background:rgba(255,255,255,0.05); border:1px solid var(--line); text-align:center; }
+.card small{ display:block; color:var(--muted); margin-bottom:4px; }
+.card strong{ font-size:1.2em; }
+.warn{ display:none; background:#3b2a05; color:#fcd34d; padding:12px; border-radius:14px; margin-bottom:16px; }
+
+/* ---------- Categorieën ---------- */
+.cat-block{ margin-top:12px; }
+.cat-bar{
+  display:flex; gap:6px; align-items:center; flex-wrap:wrap;
+  padding:10px 12px; border-radius:16px; color:white;
+  box-shadow:0 4px 14px rgba(0,0,0,0.35);
+}
+.cat-bar strong{ font-size:1.05em; margin-inline-end:auto; }
+.cat-bar.t-inkomen{ background:linear-gradient(135deg,#15803d,#16a34a); }
+.cat-bar.t-uitgave{ background:linear-gradient(135deg,#b91c1c,#dc2626); }
+.cat-bar.t-sparen{ background:linear-gradient(135deg,#1d4ed8,#2563eb); }
+.cat-bar.t-leeg{ background:linear-gradient(135deg,#4c1d95,#6d28d9); }
+.cat-bar button{ background:rgba(0,0,0,0.3); }
+.cat-bar button.btn-edit, .cat-bar button.btn-del{ background:rgba(0,0,0,0.35); }
+.cat-bar button.toggle{ background:rgba(0,0,0,0.35); width:30px; padding:5px 0; }
+.cat-bar.sub{ padding:7px 10px; border-radius:12px; opacity:0.92; box-shadow:none; }
+.cat-bar.sub strong{ font-size:0.95em; }
+.cat-body{ margin:6px 14px 0 14px; padding:0 10px; border-inline-start:2px solid var(--line); }
+.cat-block.collapsed > .cat-body{ display:none; }
+.item{
+  display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  margin:6px 0; padding:8px 12px; border-radius:14px;
+  background:rgba(255,255,255,0.05); border:1px solid var(--line);
+}
+.item .nm{ font-weight:600; }
+.item .am{ margin-inline-start:auto; font-weight:bold; direction:ltr; }
+.badge{ font-size:11px; background:rgba(255,255,255,0.1); color:var(--muted); border-radius:999px; padding:3px 9px; }
+button.btn-edit{ background:#16a34a; color:white; }
+button.btn-del{ background:#dc2626; color:white; }
+button.btn-cancel{ background:#4b4870; }
+
+/* ---------- Invulvenster ---------- */
+.overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:200; padding:12px; }
+.modal{ background:linear-gradient(160deg,#1a1540,#100c24); border:1px solid var(--line); border-radius:22px; padding:22px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+.modal h3{ margin-top:0; font-size:1.2em; }
+.modal label{ display:block; margin:10px 0 0 0; font-size:13px; color:var(--muted); }
+.modal input, .modal select{ width:100%; margin:4px 0; }
+.modal .err{ color:var(--t-red); font-size:13px; margin-top:8px; }
+.modal .btns{ display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="menu-btn" id="menuBtn" aria-label="Menu"><span></span><span></span><span></span></button>
+  <div class="titles">
+    <h1>Budgettool 5.0</h1>
+    <div class="sub" id="pageLabel"></div>
+  </div>
+  <button class="gear-btn" id="gearBtn" aria-label="Settings">⚙️</button>
+</header>
+
+<div class="backdrop" id="backdrop"></div>
+
+<nav class="sidebar" id="sidebar">
+  <div class="side-head">
+    <strong data-i="menu">Menu</strong>
+    <button class="close" id="closeMenu" aria-label="Close">✕</button>
+  </div>
+  <div id="sideContent"></div>
+</nav>
+
+<nav class="sidebar" id="settingsBar">
+  <div class="side-head">
+    <strong>⚙️ <span data-i="settings">Instellingen</span></strong>
+    <button class="close" id="closeSettings" aria-label="Close">✕</button>
+  </div>
+  <div class="side-label" data-i="lang">Taal</div>
+  <div id="langList"></div>
+</nav>
+
+<main>
+<div class="warn" id="chartWarn"></div>
+
+<!-- ============ PAGINA: MAAND ============ -->
+<div id="pageMonth">
+  <div class="panel">
+    <h3><span data-i="ov"></span> <span id="monthName"></span></h3>
+    <div class="cards">
+      <div class="card"><small data-i="inc"></small><strong class="income">€<span id="mInc">0.00</span></strong></div>
+      <div class="card"><small data-i="exp"></small><strong class="expense">€<span id="mExp">0.00</span></strong></div>
+      <div class="card"><small data-i="sav"></small><strong class="saving">€<span id="mSav">0.00</span></strong></div>
+      <div class="card"><small data-i="left"></small><strong id="mRest">€0.00</strong></div>
+    </div>
+    <p class="hint" data-i="fm"></p>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="cy"></h3>
+    <label><input type="checkbox" id="showIncome" checked> <span data-i="inc"></span></label>
+    <label><input type="checkbox" id="showExpense" checked> <span data-i="exp"></span></label>
+    <label><input type="checkbox" id="showSaving" checked> <span data-i="sav"></span></label>
+    <label><input type="checkbox" id="showRest" checked> <span data-i="leftS"></span></label>
+    <canvas id="chart"></canvas>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="ep"></h3>
+    <div class="pie-box"><canvas id="pieChart"></canvas></div>
+    <p class="empty" id="pieEmpty" data-i="nem"></p>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="ip"></h3>
+    <div class="pie-box"><canvas id="incPieChart"></canvas></div>
+    <p class="empty" id="incPieEmpty" data-i="nim"></p>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="cats"></h3>
+    <button onclick="addCategory()" data-i="nc"></button>
+    <div id="categories"></div>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="ms"></h3>
+    <p class="hint" data-i="rh"></p>
+    <div class="row"><span data-i="ri"></span><span class="income">€<span id="recInc">0.00</span></span></div>
+    <div class="row"><span data-i="re"></span><span class="expense">€<span id="recExp">0.00</span></span></div>
+    <div class="row"><span data-i="sav"></span><span class="saving">€<span id="recSav">0.00</span></span></div>
+    <div class="row total"><span data-i="sa"></span><span id="recBal">€0.00</span></div>
+  </div>
+</div>
+
+<!-- ============ PAGINA: ALGEMEEN ============ -->
+<div id="pageGeneral" style="display:none;">
+  <div class="panel">
+    <h3 id="ytdTitle"></h3>
+    <div class="cards">
+      <div class="card"><small data-i="earn"></small><strong class="income">€<span id="yInc">0.00</span></strong></div>
+      <div class="card"><small data-i="spent"></small><strong class="expense">€<span id="yExp">0.00</span></strong></div>
+      <div class="card"><small data-i="sav"></small><strong class="saving">€<span id="ySav">0.00</span></strong></div>
+      <div class="card"><small data-i="left"></small><strong id="yRest">€0.00</strong></div>
+    </div>
+    <p class="hint" data-i="fy"></p>
+    <h4 style="margin:14px 0 0 0;" data-i="avg"></h4>
+    <div class="cards">
+      <div class="card"><small data-i="ai"></small><strong class="income">€<span id="aInc">0.00</span></strong></div>
+      <div class="card"><small data-i="ae"></small><strong class="expense">€<span id="aExp">0.00</span></strong></div>
+      <div class="card"><small data-i="as"></small><strong class="saving">€<span id="aSav">0.00</span></strong></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="rec"></h3>
+    <label><span data-i="per"></span>
+      <select id="genPeriod">
+        <option value="week"></option>
+        <option value="maand" selected></option>
+        <option value="jaar"></option>
+      </select>
+    </label>
+    <div class="row"><span data-i="inc"></span><span class="income">€<span id="gInc">0.00</span></span></div>
+    <div class="row"><span data-i="exp"></span><span class="expense">€<span id="gExp">0.00</span></span></div>
+    <div class="row"><span data-i="sav"></span><span class="saving">€<span id="gSav">0.00</span></span></div>
+    <div class="row total"><span data-i="sa"></span><span id="gBal">€0.00</span></div>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="cr"></h3>
+    <canvas id="genBar"></canvas>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="wt"></h3>
+    <p class="hint" data-i="wh"></p>
+    <div class="pie-box"><canvas id="genPieSaldo"></canvas></div>
+    <p class="empty" id="genPieSaldoEmpty" data-i="nb"></p>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="wi"></h3>
+    <div class="pie-box"><canvas id="genPieInc"></canvas></div>
+    <p class="empty" id="genPieIncEmpty" data-i="ni"></p>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="ic"></h3>
+    <div class="pie-box"><canvas id="genPieIncCat"></canvas></div>
+    <p class="empty" id="genPieIncCatEmpty" data-i="ni"></p>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="wc"></h3>
+    <div class="pie-box"><canvas id="genPieExp"></canvas></div>
+    <p class="empty" id="genPieExpEmpty" data-i="ne"></p>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="lr"></h3>
+    <button onclick="addCategory()" data-i="nc"></button>
+    <div id="genCategories"></div>
+  </div>
+</div>
+</main>
+
+<script>
+/* ================= TALEN ================= */
+const LANGS = [
+  {c:"en", n:"English", f:"🇬🇧"},
+  {c:"es", n:"Español", f:"🇪🇸"},
+  {c:"fr", n:"Français", f:"🇫🇷"},
+  {c:"de", n:"Deutsch", f:"🇩🇪"},
+  {c:"zh-CN", n:"中文 (普通话)", f:"🇨🇳"},
+  {c:"pt", n:"Português", f:"🇵🇹"},
+  {c:"ar", n:"العربية", f:"🇸🇦", rtl:true},
+  {c:"hi", n:"हिन्दी", f:"🇮🇳"},
+  {c:"ja", n:"日本語", f:"🇯🇵"},
+  {c:"ru", n:"Русский", f:"🇷🇺"},
+  {c:"it", n:"Italiano", f:"🇮🇹"},
+  {c:"nl", n:"Nederlands", f:"🇳🇱"},
+  {c:"ko", n:"한국어", f:"🇰🇷"},
+  {c:"tr", n:"Türkçe", f:"🇹🇷"},
+  {c:"id", n:"Bahasa Indonesia", f:"🇮🇩"},
+  {c:"pl", n:"Polski", f:"🇵🇱"},
+  {c:"bn", n:"বাংলা", f:"🇧🇩"},
+  {c:"ur", n:"اردو", f:"🇵🇰", rtl:true},
+  {c:"vi", n:"Tiếng Việt", f:"🇻🇳"},
+  {c:"uk", n:"Українська", f:"🇺🇦"}
+];
+
+const TR = {
+nl:{menu:"Menu",settings:"Instellingen",lang:"Taal",gen:"Algemeen",genOv:"Algemeen overzicht",mon:"Maanden",ov:"Overzicht",inc:"Inkomsten",exp:"Uitgaven",sav:"Sparen",left:"Over (na sparen)",leftS:"Over",fm:"Over = inkomsten − uitgaven − sparen",cy:"Grafiek (hele jaar)",ep:"Uitgaven per categorie (deze maand)",ip:"Inkomsten per categorie (deze maand)",nem:"Nog geen uitgaven deze maand.",nim:"Nog geen inkomsten deze maand.",cats:"Categorieën",nc:"+ nieuwe categorie",ms:"Maandelijks overschot",rh:"Terugkerende bedragen van deze maand (eenmalige bedragen tellen niet mee).",ri:"Terugkerende inkomsten",re:"Terugkerende uitgaven",sa:"Overschot (na sparen)",ytd:"Dit jaar tot nu (januari t/m {m})",earn:"Verdiend",spent:"Uitgegeven",fy:"Over = verdiend − uitgegeven − gespaard",avg:"Gemiddeld per maand (dit jaar tot nu)",ai:"Gemiddeld inkomen",ae:"Gemiddelde uitgaven",as:"Gemiddeld gespaard",rec:"Terugkerende bedragen",per:"Toon per:",wk:"week",mo:"maand",yr:"jaar",cr:"Grafiek terugkerend",wt:"Waar gaat mijn inkomen naartoe?",wh:"Verdeling van je terugkerende inkomen in uitgaven, sparen en wat overblijft.",wi:"Welk inkomen brengt het meeste op?",ic:"Inkomsten per categorie",wc:"Naar welke categorie gaat het meeste geld?",ni:"Nog geen inkomsten.",ne:"Nog geen uitgaven.",nb:"Nog geen inkomsten of uitgaven.",lr:"Lijst terugkerende bedragen",cw:"De grafieken kunnen niet geladen worden (Chart.js wordt geblokkeerd). De rest van de pagina werkt wel.",nsub:"Nieuwe subcategorie",ncat:"Nieuwe categorie",ren:"Categorie hernoemen",dc:"Categorie verwijderen",dcm:"Categorie “{n}” verwijderen? Alle bedragen en subcategorieën erin worden ook verwijderd.",nit:"Nieuw bedrag",eit:"Bedrag bewerken",di:"Bedrag verwijderen",dim:"Bedrag “{n}” verwijderen?",name:"Naam",amt:"Bedrag (€)",kind:"Soort",freq:"Hoe vaak",save:"Opslaan",cancel:"Annuleren",del:"Verwijderen",e1:"Vul een naam in.",e2:"Vul een geldig bedrag in.",tI:"inkomen",tE:"uitgave",tS:"sparen",dy:"dag",once:"eenmalig",addA:"+ bedrag",addS:"+ sub"},
+en:{menu:"Menu",settings:"Settings",lang:"Language",gen:"General",genOv:"General overview",mon:"Months",ov:"Overview",inc:"Income",exp:"Expenses",sav:"Savings",left:"Left (after savings)",leftS:"Left",fm:"Left = income − expenses − savings",cy:"Chart (whole year)",ep:"Expenses per category (this month)",ip:"Income per category (this month)",nem:"No expenses this month yet.",nim:"No income this month yet.",cats:"Categories",nc:"+ new category",ms:"Monthly surplus",rh:"Recurring amounts of this month (one-time amounts are not counted).",ri:"Recurring income",re:"Recurring expenses",sa:"Surplus (after savings)",ytd:"This year so far (January to {m})",earn:"Earned",spent:"Spent",fy:"Left = earned − spent − saved",avg:"Average per month (this year so far)",ai:"Average income",ae:"Average expenses",as:"Average saved",rec:"Recurring amounts",per:"Show per:",wk:"week",mo:"month",yr:"year",cr:"Recurring chart",wt:"Where does my income go?",wh:"Split of your recurring income into expenses, savings and what is left.",wi:"Which income earns the most?",ic:"Income per category",wc:"Which category gets the most money?",ni:"No income yet.",ne:"No expenses yet.",nb:"No income or expenses yet.",lr:"List of recurring amounts",cw:"The charts cannot be loaded (Chart.js is blocked). The rest of the page still works.",nsub:"New subcategory",ncat:"New category",ren:"Rename category",dc:"Delete category",dcm:"Delete category “{n}”? All amounts and subcategories in it will be deleted too.",nit:"New amount",eit:"Edit amount",di:"Delete amount",dim:"Delete amount “{n}”?",name:"Name",amt:"Amount (€)",kind:"Type",freq:"How often",save:"Save",cancel:"Cancel",del:"Delete",e1:"Enter a name.",e2:"Enter a valid amount.",tI:"income",tE:"expense",tS:"saving",dy:"day",once:"one-time",addA:"+ amount",addS:"+ sub"},
+es:{menu:"Menú",settings:"Ajustes",lang:"Idioma",gen:"General",genOv:"Resumen general",mon:"Meses",ov:"Resumen",inc:"Ingresos",exp:"Gastos",sav:"Ahorro",left:"Resto (tras ahorrar)",leftS:"Resto",fm:"Resto = ingresos − gastos − ahorro",cy:"Gráfico (todo el año)",ep:"Gastos por categoría (este mes)",ip:"Ingresos por categoría (este mes)",nem:"Aún no hay gastos este mes.",nim:"Aún no hay ingresos este mes.",cats:"Categorías",nc:"+ nueva categoría",ms:"Excedente mensual",rh:"Importes recurrentes de este mes (los puntuales no cuentan).",ri:"Ingresos recurrentes",re:"Gastos recurrentes",sa:"Excedente (tras ahorrar)",ytd:"Este año hasta ahora (enero a {m})",earn:"Ganado",spent:"Gastado",fy:"Resto = ganado − gastado − ahorrado",avg:"Media por mes (este año hasta ahora)",ai:"Ingreso medio",ae:"Gasto medio",as:"Ahorro medio",rec:"Importes recurrentes",per:"Mostrar por:",wk:"semana",mo:"mes",yr:"año",cr:"Gráfico recurrente",wt:"¿A dónde va mi dinero?",wh:"Reparto de tus ingresos recurrentes en gastos, ahorro y lo que sobra.",wi:"¿Qué ingreso aporta más?",ic:"Ingresos por categoría",wc:"¿A qué categoría va más dinero?",ni:"Aún no hay ingresos.",ne:"Aún no hay gastos.",nb:"Aún no hay ingresos ni gastos.",lr:"Lista de importes recurrentes",cw:"No se pueden cargar los gráficos (Chart.js está bloqueado). El resto de la página funciona.",nsub:"Nueva subcategoría",ncat:"Nueva categoría",ren:"Renombrar categoría",dc:"Eliminar categoría",dcm:"¿Eliminar la categoría “{n}”? También se eliminarán todos los importes y subcategorías.",nit:"Nuevo importe",eit:"Editar importe",di:"Eliminar importe",dim:"¿Eliminar el importe “{n}”?",name:"Nombre",amt:"Importe (€)",kind:"Tipo",freq:"Frecuencia",save:"Guardar",cancel:"Cancelar",del:"Eliminar",e1:"Introduce un nombre.",e2:"Introduce un importe válido.",tI:"ingreso",tE:"gasto",tS:"ahorro",dy:"día",once:"puntual",addA:"+ importe",addS:"+ sub"},
+fr:{menu:"Menu",settings:"Paramètres",lang:"Langue",gen:"Général",genOv:"Vue générale",mon:"Mois",ov:"Aperçu",inc:"Revenus",exp:"Dépenses",sav:"Épargne",left:"Reste (après épargne)",leftS:"Reste",fm:"Reste = revenus − dépenses − épargne",cy:"Graphique (toute l’année)",ep:"Dépenses par catégorie (ce mois)",ip:"Revenus par catégorie (ce mois)",nem:"Pas encore de dépenses ce mois.",nim:"Pas encore de revenus ce mois.",cats:"Catégories",nc:"+ nouvelle catégorie",ms:"Excédent mensuel",rh:"Montants récurrents de ce mois (les montants ponctuels ne comptent pas).",ri:"Revenus récurrents",re:"Dépenses récurrentes",sa:"Excédent (après épargne)",ytd:"Cette année jusqu’ici (janvier à {m})",earn:"Gagné",spent:"Dépensé",fy:"Reste = gagné − dépensé − épargné",avg:"Moyenne par mois (cette année jusqu’ici)",ai:"Revenu moyen",ae:"Dépenses moyennes",as:"Épargne moyenne",rec:"Montants récurrents",per:"Afficher par :",wk:"semaine",mo:"mois",yr:"an",cr:"Graphique récurrent",wt:"Où va mon argent ?",wh:"Répartition de vos revenus récurrents entre dépenses, épargne et le reste.",wi:"Quel revenu rapporte le plus ?",ic:"Revenus par catégorie",wc:"Quelle catégorie reçoit le plus d’argent ?",ni:"Pas encore de revenus.",ne:"Pas encore de dépenses.",nb:"Pas encore de revenus ni de dépenses.",lr:"Liste des montants récurrents",cw:"Les graphiques ne peuvent pas être chargés (Chart.js est bloqué). Le reste de la page fonctionne.",nsub:"Nouvelle sous-catégorie",ncat:"Nouvelle catégorie",ren:"Renommer la catégorie",dc:"Supprimer la catégorie",dcm:"Supprimer la catégorie « {n} » ? Tous les montants et sous-catégories seront aussi supprimés.",nit:"Nouveau montant",eit:"Modifier le montant",di:"Supprimer le montant",dim:"Supprimer le montant « {n} » ?",name:"Nom",amt:"Montant (€)",kind:"Type",freq:"Fréquence",save:"Enregistrer",cancel:"Annuler",del:"Supprimer",e1:"Saisissez un nom.",e2:"Saisissez un montant valide.",tI:"revenu",tE:"dépense",tS:"épargne",dy:"jour",once:"ponctuel",addA:"+ montant",addS:"+ sous"},
+de:{menu:"Menü",settings:"Einstellungen",lang:"Sprache",gen:"Allgemein",genOv:"Allgemeine Übersicht",mon:"Monate",ov:"Übersicht",inc:"Einnahmen",exp:"Ausgaben",sav:"Sparen",left:"Übrig (nach Sparen)",leftS:"Übrig",fm:"Übrig = Einnahmen − Ausgaben − Sparen",cy:"Diagramm (ganzes Jahr)",ep:"Ausgaben pro Kategorie (diesen Monat)",ip:"Einnahmen pro Kategorie (diesen Monat)",nem:"Diesen Monat noch keine Ausgaben.",nim:"Diesen Monat noch keine Einnahmen.",cats:"Kategorien",nc:"+ neue Kategorie",ms:"Monatlicher Überschuss",rh:"Wiederkehrende Beträge dieses Monats (einmalige Beträge zählen nicht).",ri:"Wiederkehrende Einnahmen",re:"Wiederkehrende Ausgaben",sa:"Überschuss (nach Sparen)",ytd:"Dieses Jahr bisher (Januar bis {m})",earn:"Verdient",spent:"Ausgegeben",fy:"Übrig = verdient − ausgegeben − gespart",avg:"Durchschnitt pro Monat (dieses Jahr bisher)",ai:"Ø Einnahmen",ae:"Ø Ausgaben",as:"Ø gespart",rec:"Wiederkehrende Beträge",per:"Anzeigen pro:",wk:"Woche",mo:"Monat",yr:"Jahr",cr:"Diagramm wiederkehrend",wt:"Wohin geht mein Einkommen?",wh:"Aufteilung deiner wiederkehrenden Einnahmen in Ausgaben, Sparen und den Rest.",wi:"Welches Einkommen bringt am meisten?",ic:"Einnahmen pro Kategorie",wc:"In welche Kategorie fließt das meiste Geld?",ni:"Noch keine Einnahmen.",ne:"Noch keine Ausgaben.",nb:"Noch keine Einnahmen oder Ausgaben.",lr:"Liste wiederkehrender Beträge",cw:"Die Diagramme können nicht geladen werden (Chart.js ist blockiert). Der Rest der Seite funktioniert.",nsub:"Neue Unterkategorie",ncat:"Neue Kategorie",ren:"Kategorie umbenennen",dc:"Kategorie löschen",dcm:"Kategorie „{n}“ löschen? Alle Beträge und Unterkategorien darin werden ebenfalls gelöscht.",nit:"Neuer Betrag",eit:"Betrag bearbeiten",di:"Betrag löschen",dim:"Betrag „{n}“ löschen?",name:"Name",amt:"Betrag (€)",kind:"Art",freq:"Wie oft",save:"Speichern",cancel:"Abbrechen",del:"Löschen",e1:"Bitte einen Namen eingeben.",e2:"Bitte einen gültigen Betrag eingeben.",tI:"Einnahme",tE:"Ausgabe",tS:"Sparen",dy:"Tag",once:"einmalig",addA:"+ Betrag",addS:"+ Unter"},
+"zh-CN":{menu:"菜单",settings:"设置",lang:"语言",gen:"总览",genOv:"总体概览",mon:"月份",ov:"概览",inc:"收入",exp:"支出",sav:"储蓄",left:"结余（储蓄后）",leftS:"结余",fm:"结余 = 收入 − 支出 − 储蓄",cy:"图表（全年）",ep:"各类别支出（本月）",ip:"各类别收入（本月）",nem:"本月暂无支出。",nim:"本月暂无收入。",cats:"类别",nc:"+ 新类别",ms:"每月盈余",rh:"本月的定期金额（一次性金额不计入）。",ri:"定期收入",re:"定期支出",sa:"盈余（储蓄后）",ytd:"今年至今（1月至{m}）",earn:"已赚",spent:"已花",fy:"结余 = 已赚 − 已花 − 已存",avg:"每月平均（今年至今）",ai:"平均收入",ae:"平均支出",as:"平均储蓄",rec:"定期金额",per:"按以下显示：",wk:"周",mo:"月",yr:"年",cr:"定期图表",wt:"我的收入去哪了？",wh:"定期收入在支出、储蓄和结余中的分配。",wi:"哪项收入最多？",ic:"各类别收入",wc:"哪个类别花钱最多？",ni:"暂无收入。",ne:"暂无支出。",nb:"暂无收入或支出。",lr:"定期金额列表",cw:"无法加载图表（Chart.js 被阻止）。页面其余部分仍可使用。",nsub:"新子类别",ncat:"新类别",ren:"重命名类别",dc:"删除类别",dcm:"删除类别“{n}”？其中所有金额和子类别也将被删除。",nit:"新金额",eit:"编辑金额",di:"删除金额",dim:"删除金额“{n}”？",name:"名称",amt:"金额（€）",kind:"类型",freq:"频率",save:"保存",cancel:"取消",del:"删除",e1:"请输入名称。",e2:"请输入有效金额。",tI:"收入",tE:"支出",tS:"储蓄",dy:"天",once:"一次性",addA:"+ 金额",addS:"+ 子类"},
+pt:{menu:"Menu",settings:"Definições",lang:"Idioma",gen:"Geral",genOv:"Visão geral",mon:"Meses",ov:"Resumo",inc:"Receitas",exp:"Despesas",sav:"Poupança",left:"Resto (após poupar)",leftS:"Resto",fm:"Resto = receitas − despesas − poupança",cy:"Gráfico (ano inteiro)",ep:"Despesas por categoria (este mês)",ip:"Receitas por categoria (este mês)",nem:"Ainda sem despesas este mês.",nim:"Ainda sem receitas este mês.",cats:"Categorias",nc:"+ nova categoria",ms:"Excedente mensal",rh:"Valores recorrentes deste mês (valores únicos não contam).",ri:"Receitas recorrentes",re:"Despesas recorrentes",sa:"Excedente (após poupar)",ytd:"Este ano até agora (janeiro a {m})",earn:"Ganho",spent:"Gasto",fy:"Resto = ganho − gasto − poupado",avg:"Média por mês (este ano até agora)",ai:"Receita média",ae:"Despesa média",as:"Poupança média",rec:"Valores recorrentes",per:"Mostrar por:",wk:"semana",mo:"mês",yr:"ano",cr:"Gráfico recorrente",wt:"Para onde vai o meu rendimento?",wh:"Divisão dos seus rendimentos recorrentes em despesas, poupança e o que sobra.",wi:"Qual rendimento rende mais?",ic:"Receitas por categoria",wc:"Para que categoria vai mais dinheiro?",ni:"Ainda sem receitas.",ne:"Ainda sem despesas.",nb:"Ainda sem receitas nem despesas.",lr:"Lista de valores recorrentes",cw:"Não foi possível carregar os gráficos (Chart.js bloqueado). O resto da página funciona.",nsub:"Nova subcategoria",ncat:"Nova categoria",ren:"Mudar nome da categoria",dc:"Eliminar categoria",dcm:"Eliminar a categoria “{n}”? Todos os valores e subcategorias nela também serão eliminados.",nit:"Novo valor",eit:"Editar valor",di:"Eliminar valor",dim:"Eliminar o valor “{n}”?",name:"Nome",amt:"Valor (€)",kind:"Tipo",freq:"Frequência",save:"Guardar",cancel:"Cancelar",del:"Eliminar",e1:"Introduza um nome.",e2:"Introduza um valor válido.",tI:"receita",tE:"despesa",tS:"poupança",dy:"dia",once:"único",addA:"+ valor",addS:"+ sub"},
+ar:{menu:"القائمة",settings:"الإعدادات",lang:"اللغة",gen:"عام",genOv:"نظرة عامة",mon:"الأشهر",ov:"نظرة عامة",inc:"الدخل",exp:"المصروفات",sav:"المدخرات",left:"المتبقي (بعد الادخار)",leftS:"المتبقي",fm:"المتبقي = الدخل − المصروفات − المدخرات",cy:"الرسم البياني (السنة كاملة)",ep:"المصروفات حسب الفئة (هذا الشهر)",ip:"الدخل حسب الفئة (هذا الشهر)",nem:"لا توجد مصروفات هذا الشهر بعد.",nim:"لا يوجد دخل هذا الشهر بعد.",cats:"الفئات",nc:"+ فئة جديدة",ms:"الفائض الشهري",rh:"المبالغ المتكررة لهذا الشهر (المبالغ لمرة واحدة لا تُحتسب).",ri:"دخل متكرر",re:"مصروفات متكررة",sa:"الفائض (بعد الادخار)",ytd:"هذه السنة حتى الآن (من يناير إلى {m})",earn:"المكتسب",spent:"المنفق",fy:"المتبقي = المكتسب − المنفق − المدخر",avg:"المتوسط الشهري (هذه السنة حتى الآن)",ai:"متوسط الدخل",ae:"متوسط المصروفات",as:"متوسط الادخار",rec:"المبالغ المتكررة",per:"عرض حسب:",wk:"أسبوع",mo:"شهر",yr:"سنة",cr:"رسم المتكرر",wt:"أين يذهب دخلي؟",wh:"توزيع دخلك المتكرر بين المصروفات والادخار والمتبقي.",wi:"أي دخل يحقق أكثر؟",ic:"الدخل حسب الفئة",wc:"أي فئة تأخذ أكبر قدر من المال؟",ni:"لا يوجد دخل بعد.",ne:"لا توجد مصروفات بعد.",nb:"لا يوجد دخل أو مصروفات بعد.",lr:"قائمة المبالغ المتكررة",cw:"تعذر تحميل الرسوم البيانية (Chart.js محظور). بقية الصفحة تعمل.",nsub:"فئة فرعية جديدة",ncat:"فئة جديدة",ren:"إعادة تسمية الفئة",dc:"حذف الفئة",dcm:"حذف الفئة «{n}»؟ سيتم أيضًا حذف كل المبالغ والفئات الفرعية داخلها.",nit:"مبلغ جديد",eit:"تعديل المبلغ",di:"حذف المبلغ",dim:"حذف المبلغ «{n}»؟",name:"الاسم",amt:"المبلغ (€)",kind:"النوع",freq:"التكرار",save:"حفظ",cancel:"إلغاء",del:"حذف",e1:"أدخل اسمًا.",e2:"أدخل مبلغًا صالحًا.",tI:"دخل",tE:"مصروف",tS:"ادخار",dy:"يوم",once:"مرة واحدة",addA:"+ مبلغ",addS:"+ فرعية"},
+hi:{menu:"मेनू",settings:"सेटिंग्स",lang:"भाषा",gen:"सामान्य",genOv:"सामान्य अवलोकन",mon:"महीने",ov:"अवलोकन",inc:"आय",exp:"खर्च",sav:"बचत",left:"शेष (बचत के बाद)",leftS:"शेष",fm:"शेष = आय − खर्च − बचत",cy:"चार्ट (पूरा वर्ष)",ep:"श्रेणी के अनुसार खर्च (इस महीने)",ip:"श्रेणी के अनुसार आय (इस महीने)",nem:"इस महीने अभी कोई खर्च नहीं।",nim:"इस महीने अभी कोई आय नहीं।",cats:"श्रेणियाँ",nc:"+ नई श्रेणी",ms:"मासिक अधिशेष",rh:"इस महीने की आवर्ती राशियाँ (एकबारगी राशियाँ नहीं गिनी जातीं)।",ri:"आवर्ती आय",re:"आवर्ती खर्च",sa:"अधिशेष (बचत के बाद)",ytd:"इस वर्ष अब तक (जनवरी से {m})",earn:"कमाया",spent:"खर्च किया",fy:"शेष = कमाया − खर्च − बचाया",avg:"प्रति माह औसत (इस वर्ष अब तक)",ai:"औसत आय",ae:"औसत खर्च",as:"औसत बचत",rec:"आवर्ती राशियाँ",per:"इसके अनुसार दिखाएँ:",wk:"सप्ताह",mo:"महीना",yr:"वर्ष",cr:"आवर्ती चार्ट",wt:"मेरी आय कहाँ जाती है?",wh:"आपकी आवर्ती आय का खर्च, बचत और शेष में विभाजन।",wi:"कौन-सी आय सबसे ज़्यादा है?",ic:"श्रेणी के अनुसार आय",wc:"किस श्रेणी में सबसे ज़्यादा पैसा जाता है?",ni:"अभी कोई आय नहीं।",ne:"अभी कोई खर्च नहीं।",nb:"अभी कोई आय या खर्च नहीं।",lr:"आवर्ती राशियों की सूची",cw:"चार्ट लोड नहीं हो सके (Chart.js अवरुद्ध है)। बाकी पेज काम करता है।",nsub:"नई उप-श्रेणी",ncat:"नई श्रेणी",ren:"श्रेणी का नाम बदलें",dc:"श्रेणी हटाएँ",dcm:"श्रेणी “{n}” हटाएँ? इसमें मौजूद सभी राशियाँ और उप-श्रेणियाँ भी हट जाएँगी।",nit:"नई राशि",eit:"राशि संपादित करें",di:"राशि हटाएँ",dim:"राशि “{n}” हटाएँ?",name:"नाम",amt:"राशि (€)",kind:"प्रकार",freq:"कितनी बार",save:"सहेजें",cancel:"रद्द करें",del:"हटाएँ",e1:"कृपया नाम दर्ज करें।",e2:"कृपया मान्य राशि दर्ज करें।",tI:"आय",tE:"खर्च",tS:"बचत",dy:"दिन",once:"एकबारगी",addA:"+ राशि",addS:"+ उप"},
+ja:{menu:"メニュー",settings:"設定",lang:"言語",gen:"全体",genOv:"全体の概要",mon:"月",ov:"概要",inc:"収入",exp:"支出",sav:"貯蓄",left:"残り（貯蓄後）",leftS:"残り",fm:"残り = 収入 − 支出 − 貯蓄",cy:"グラフ（1年間）",ep:"カテゴリ別の支出（今月）",ip:"カテゴリ別の収入（今月）",nem:"今月はまだ支出がありません。",nim:"今月はまだ収入がありません。",cats:"カテゴリ",nc:"+ 新しいカテゴリ",ms:"月間の余剰",rh:"今月の定期的な金額（単発は含みません）。",ri:"定期収入",re:"定期支出",sa:"余剰（貯蓄後）",ytd:"今年これまで（1月〜{m}）",earn:"収入合計",spent:"支出合計",fy:"残り = 収入 − 支出 − 貯蓄",avg:"月平均（今年これまで）",ai:"平均収入",ae:"平均支出",as:"平均貯蓄",rec:"定期的な金額",per:"表示単位：",wk:"週",mo:"月",yr:"年",cr:"定期グラフ",wt:"収入はどこへ？",wh:"定期収入を支出・貯蓄・残りに分けた内訳です。",wi:"どの収入が最も多い？",ic:"カテゴリ別の収入",wc:"どのカテゴリに最もお金が使われている？",ni:"まだ収入がありません。",ne:"まだ支出がありません。",nb:"まだ収入も支出もありません。",lr:"定期的な金額の一覧",cw:"グラフを読み込めません（Chart.js がブロックされています）。ページの他の部分は動作します。",nsub:"新しいサブカテゴリ",ncat:"新しいカテゴリ",ren:"カテゴリ名を変更",dc:"カテゴリを削除",dcm:"カテゴリ「{n}」を削除しますか？中の金額とサブカテゴリもすべて削除されます。",nit:"新しい金額",eit:"金額を編集",di:"金額を削除",dim:"金額「{n}」を削除しますか？",name:"名前",amt:"金額（€）",kind:"種類",freq:"頻度",save:"保存",cancel:"キャンセル",del:"削除",e1:"名前を入力してください。",e2:"有効な金額を入力してください。",tI:"収入",tE:"支出",tS:"貯蓄",dy:"日",once:"単発",addA:"+ 金額",addS:"+ サブ"},
+ru:{menu:"Меню",settings:"Настройки",lang:"Язык",gen:"Общее",genOv:"Общий обзор",mon:"Месяцы",ov:"Обзор",inc:"Доходы",exp:"Расходы",sav:"Сбережения",left:"Остаток (после сбережений)",leftS:"Остаток",fm:"Остаток = доходы − расходы − сбережения",cy:"График (весь год)",ep:"Расходы по категориям (этот месяц)",ip:"Доходы по категориям (этот месяц)",nem:"В этом месяце расходов пока нет.",nim:"В этом месяце доходов пока нет.",cats:"Категории",nc:"+ новая категория",ms:"Месячный излишек",rh:"Регулярные суммы этого месяца (разовые не учитываются).",ri:"Регулярные доходы",re:"Регулярные расходы",sa:"Излишек (после сбережений)",ytd:"Этот год на данный момент (январь — {m})",earn:"Заработано",spent:"Потрачено",fy:"Остаток = заработано − потрачено − накоплено",avg:"В среднем за месяц (этот год)",ai:"Средний доход",ae:"Средние расходы",as:"Средние сбережения",rec:"Регулярные суммы",per:"Показывать за:",wk:"неделю",mo:"месяц",yr:"год",cr:"График регулярных",wt:"Куда уходит мой доход?",wh:"Распределение регулярного дохода на расходы, сбережения и остаток.",wi:"Какой доход приносит больше всего?",ic:"Доходы по категориям",wc:"В какую категорию уходит больше всего денег?",ni:"Доходов пока нет.",ne:"Расходов пока нет.",nb:"Доходов и расходов пока нет.",lr:"Список регулярных сумм",cw:"Не удалось загрузить графики (Chart.js заблокирован). Остальная часть страницы работает.",nsub:"Новая подкатегория",ncat:"Новая категория",ren:"Переименовать категорию",dc:"Удалить категорию",dcm:"Удалить категорию «{n}»? Все суммы и подкатегории в ней тоже будут удалены.",nit:"Новая сумма",eit:"Изменить сумму",di:"Удалить сумму",dim:"Удалить сумму «{n}»?",name:"Название",amt:"Сумма (€)",kind:"Тип",freq:"Как часто",save:"Сохранить",cancel:"Отмена",del:"Удалить",e1:"Введите название.",e2:"Введите корректную сумму.",tI:"доход",tE:"расход",tS:"сбережение",dy:"день",once:"разово",addA:"+ сумма",addS:"+ под"},
+it:{menu:"Menu",settings:"Impostazioni",lang:"Lingua",gen:"Generale",genOv:"Panoramica generale",mon:"Mesi",ov:"Panoramica",inc:"Entrate",exp:"Uscite",sav:"Risparmi",left:"Resto (dopo i risparmi)",leftS:"Resto",fm:"Resto = entrate − uscite − risparmi",cy:"Grafico (tutto l’anno)",ep:"Uscite per categoria (questo mese)",ip:"Entrate per categoria (questo mese)",nem:"Ancora nessuna uscita questo mese.",nim:"Ancora nessuna entrata questo mese.",cats:"Categorie",nc:"+ nuova categoria",ms:"Avanzo mensile",rh:"Importi ricorrenti di questo mese (gli importi una tantum non contano).",ri:"Entrate ricorrenti",re:"Uscite ricorrenti",sa:"Avanzo (dopo i risparmi)",ytd:"Quest’anno finora (da gennaio a {m})",earn:"Guadagnato",spent:"Speso",fy:"Resto = guadagnato − speso − risparmiato",avg:"Media al mese (quest’anno finora)",ai:"Entrata media",ae:"Uscita media",as:"Risparmio medio",rec:"Importi ricorrenti",per:"Mostra per:",wk:"settimana",mo:"mese",yr:"anno",cr:"Grafico ricorrente",wt:"Dove vanno le mie entrate?",wh:"Ripartizione delle entrate ricorrenti tra uscite, risparmi e il resto.",wi:"Quale entrata rende di più?",ic:"Entrate per categoria",wc:"A quale categoria va più denaro?",ni:"Ancora nessuna entrata.",ne:"Ancora nessuna uscita.",nb:"Ancora nessuna entrata o uscita.",lr:"Elenco importi ricorrenti",cw:"Impossibile caricare i grafici (Chart.js è bloccato). Il resto della pagina funziona.",nsub:"Nuova sottocategoria",ncat:"Nuova categoria",ren:"Rinomina categoria",dc:"Elimina categoria",dcm:"Eliminare la categoria “{n}”? Verranno eliminati anche tutti gli importi e le sottocategorie.",nit:"Nuovo importo",eit:"Modifica importo",di:"Elimina importo",dim:"Eliminare l’importo “{n}”?",name:"Nome",amt:"Importo (€)",kind:"Tipo",freq:"Frequenza",save:"Salva",cancel:"Annulla",del:"Elimina",e1:"Inserisci un nome.",e2:"Inserisci un importo valido.",tI:"entrata",tE:"uscita",tS:"risparmio",dy:"giorno",once:"una tantum",addA:"+ importo",addS:"+ sotto"},
+ko:{menu:"메뉴",settings:"설정",lang:"언어",gen:"전체",genOv:"전체 개요",mon:"월",ov:"개요",inc:"수입",exp:"지출",sav:"저축",left:"남은 금액(저축 후)",leftS:"남음",fm:"남음 = 수입 − 지출 − 저축",cy:"차트(1년 전체)",ep:"카테고리별 지출(이번 달)",ip:"카테고리별 수입(이번 달)",nem:"이번 달 지출이 아직 없습니다.",nim:"이번 달 수입이 아직 없습니다.",cats:"카테고리",nc:"+ 새 카테고리",ms:"월 잉여금",rh:"이번 달의 반복 금액(일회성 금액은 제외).",ri:"반복 수입",re:"반복 지출",sa:"잉여금(저축 후)",ytd:"올해 지금까지(1월~{m})",earn:"번 돈",spent:"쓴 돈",fy:"남음 = 번 돈 − 쓴 돈 − 저축",avg:"월 평균(올해 지금까지)",ai:"평균 수입",ae:"평균 지출",as:"평균 저축",rec:"반복 금액",per:"표시 단위:",wk:"주",mo:"월",yr:"년",cr:"반복 차트",wt:"내 수입은 어디로 갈까?",wh:"반복 수입을 지출, 저축, 남은 금액으로 나눈 분포입니다.",wi:"어떤 수입이 가장 많을까?",ic:"카테고리별 수입",wc:"어느 카테고리에 돈이 가장 많이 쓰일까?",ni:"아직 수입이 없습니다.",ne:"아직 지출이 없습니다.",nb:"아직 수입이나 지출이 없습니다.",lr:"반복 금액 목록",cw:"차트를 불러올 수 없습니다(Chart.js 차단됨). 페이지의 나머지는 작동합니다.",nsub:"새 하위 카테고리",ncat:"새 카테고리",ren:"카테고리 이름 변경",dc:"카테고리 삭제",dcm:"카테고리 “{n}”을(를) 삭제할까요? 안의 모든 금액과 하위 카테고리도 삭제됩니다.",nit:"새 금액",eit:"금액 수정",di:"금액 삭제",dim:"금액 “{n}”을(를) 삭제할까요?",name:"이름",amt:"금액(€)",kind:"종류",freq:"빈도",save:"저장",cancel:"취소",del:"삭제",e1:"이름을 입력하세요.",e2:"올바른 금액을 입력하세요.",tI:"수입",tE:"지출",tS:"저축",dy:"일",once:"일회성",addA:"+ 금액",addS:"+ 하위"},
+tr:{menu:"Menü",settings:"Ayarlar",lang:"Dil",gen:"Genel",genOv:"Genel bakış",mon:"Aylar",ov:"Özet",inc:"Gelir",exp:"Gider",sav:"Birikim",left:"Kalan (birikimden sonra)",leftS:"Kalan",fm:"Kalan = gelir − gider − birikim",cy:"Grafik (tüm yıl)",ep:"Kategoriye göre giderler (bu ay)",ip:"Kategoriye göre gelirler (bu ay)",nem:"Bu ay henüz gider yok.",nim:"Bu ay henüz gelir yok.",cats:"Kategoriler",nc:"+ yeni kategori",ms:"Aylık fazla",rh:"Bu ayın yinelenen tutarları (tek seferlikler sayılmaz).",ri:"Yinelenen gelir",re:"Yinelenen gider",sa:"Fazla (birikimden sonra)",ytd:"Bu yıl şimdiye kadar (Ocak – {m})",earn:"Kazanılan",spent:"Harcanan",fy:"Kalan = kazanılan − harcanan − biriken",avg:"Aylık ortalama (bu yıl şimdiye kadar)",ai:"Ortalama gelir",ae:"Ortalama gider",as:"Ortalama birikim",rec:"Yinelenen tutarlar",per:"Şuna göre göster:",wk:"hafta",mo:"ay",yr:"yıl",cr:"Yinelenen grafik",wt:"Gelirim nereye gidiyor?",wh:"Yinelenen gelirinizin giderlere, birikime ve kalana dağılımı.",wi:"Hangi gelir en çok kazandırıyor?",ic:"Kategoriye göre gelir",wc:"En çok para hangi kategoriye gidiyor?",ni:"Henüz gelir yok.",ne:"Henüz gider yok.",nb:"Henüz gelir veya gider yok.",lr:"Yinelenen tutarlar listesi",cw:"Grafikler yüklenemedi (Chart.js engellendi). Sayfanın geri kalanı çalışıyor.",nsub:"Yeni alt kategori",ncat:"Yeni kategori",ren:"Kategoriyi yeniden adlandır",dc:"Kategoriyi sil",dcm:"“{n}” kategorisi silinsin mi? İçindeki tüm tutarlar ve alt kategoriler de silinecek.",nit:"Yeni tutar",eit:"Tutarı düzenle",di:"Tutarı sil",dim:"“{n}” tutarı silinsin mi?",name:"Ad",amt:"Tutar (€)",kind:"Tür",freq:"Sıklık",save:"Kaydet",cancel:"İptal",del:"Sil",e1:"Bir ad girin.",e2:"Geçerli bir tutar girin.",tI:"gelir",tE:"gider",tS:"birikim",dy:"gün",once:"tek seferlik",addA:"+ tutar",addS:"+ alt"},
+id:{menu:"Menu",settings:"Pengaturan",lang:"Bahasa",gen:"Umum",genOv:"Ringkasan umum",mon:"Bulan",ov:"Ringkasan",inc:"Pemasukan",exp:"Pengeluaran",sav:"Tabungan",left:"Sisa (setelah menabung)",leftS:"Sisa",fm:"Sisa = pemasukan − pengeluaran − tabungan",cy:"Grafik (setahun penuh)",ep:"Pengeluaran per kategori (bulan ini)",ip:"Pemasukan per kategori (bulan ini)",nem:"Belum ada pengeluaran bulan ini.",nim:"Belum ada pemasukan bulan ini.",cats:"Kategori",nc:"+ kategori baru",ms:"Surplus bulanan",rh:"Jumlah berulang bulan ini (jumlah sekali saja tidak dihitung).",ri:"Pemasukan berulang",re:"Pengeluaran berulang",sa:"Surplus (setelah menabung)",ytd:"Tahun ini sejauh ini (Januari hingga {m})",earn:"Diperoleh",spent:"Dibelanjakan",fy:"Sisa = diperoleh − dibelanjakan − ditabung",avg:"Rata-rata per bulan (tahun ini sejauh ini)",ai:"Rata-rata pemasukan",ae:"Rata-rata pengeluaran",as:"Rata-rata tabungan",rec:"Jumlah berulang",per:"Tampilkan per:",wk:"minggu",mo:"bulan",yr:"tahun",cr:"Grafik berulang",wt:"Ke mana pemasukan saya pergi?",wh:"Pembagian pemasukan berulang Anda ke pengeluaran, tabungan, dan sisanya.",wi:"Pemasukan mana yang paling besar?",ic:"Pemasukan per kategori",wc:"Kategori mana yang paling banyak menerima uang?",ni:"Belum ada pemasukan.",ne:"Belum ada pengeluaran.",nb:"Belum ada pemasukan atau pengeluaran.",lr:"Daftar jumlah berulang",cw:"Grafik tidak dapat dimuat (Chart.js diblokir). Bagian halaman lainnya tetap berfungsi.",nsub:"Subkategori baru",ncat:"Kategori baru",ren:"Ubah nama kategori",dc:"Hapus kategori",dcm:"Hapus kategori “{n}”? Semua jumlah dan subkategori di dalamnya juga akan dihapus.",nit:"Jumlah baru",eit:"Ubah jumlah",di:"Hapus jumlah",dim:"Hapus jumlah “{n}”?",name:"Nama",amt:"Jumlah (€)",kind:"Jenis",freq:"Seberapa sering",save:"Simpan",cancel:"Batal",del:"Hapus",e1:"Masukkan nama.",e2:"Masukkan jumlah yang valid.",tI:"pemasukan",tE:"pengeluaran",tS:"tabungan",dy:"hari",once:"sekali",addA:"+ jumlah",addS:"+ sub"},
+pl:{menu:"Menu",settings:"Ustawienia",lang:"Język",gen:"Ogólne",genOv:"Przegląd ogólny",mon:"Miesiące",ov:"Przegląd",inc:"Przychody",exp:"Wydatki",sav:"Oszczędności",left:"Zostaje (po oszczędzaniu)",leftS:"Zostaje",fm:"Zostaje = przychody − wydatki − oszczędności",cy:"Wykres (cały rok)",ep:"Wydatki wg kategorii (ten miesiąc)",ip:"Przychody wg kategorii (ten miesiąc)",nem:"W tym miesiącu nie ma jeszcze wydatków.",nim:"W tym miesiącu nie ma jeszcze przychodów.",cats:"Kategorie",nc:"+ nowa kategoria",ms:"Miesięczna nadwyżka",rh:"Kwoty cykliczne z tego miesiąca (kwoty jednorazowe nie są liczone).",ri:"Przychody cykliczne",re:"Wydatki cykliczne",sa:"Nadwyżka (po oszczędzaniu)",ytd:"Ten rok do tej pory (styczeń – {m})",earn:"Zarobiono",spent:"Wydano",fy:"Zostaje = zarobiono − wydano − odłożono",avg:"Średnio na miesiąc (ten rok do tej pory)",ai:"Średni przychód",ae:"Średnie wydatki",as:"Średnie oszczędności",rec:"Kwoty cykliczne",per:"Pokaż na:",wk:"tydzień",mo:"miesiąc",yr:"rok",cr:"Wykres cykliczny",wt:"Gdzie idą moje dochody?",wh:"Podział Twoich cyklicznych przychodów na wydatki, oszczędności i resztę.",wi:"Który przychód jest największy?",ic:"Przychody wg kategorii",wc:"Do której kategorii idzie najwięcej pieniędzy?",ni:"Brak przychodów.",ne:"Brak wydatków.",nb:"Brak przychodów i wydatków.",lr:"Lista kwot cyklicznych",cw:"Nie można załadować wykresów (Chart.js jest zablokowany). Reszta strony działa.",nsub:"Nowa podkategoria",ncat:"Nowa kategoria",ren:"Zmień nazwę kategorii",dc:"Usuń kategorię",dcm:"Usunąć kategorię „{n}”? Wszystkie kwoty i podkategorie w niej także zostaną usunięte.",nit:"Nowa kwota",eit:"Edytuj kwotę",di:"Usuń kwotę",dim:"Usunąć kwotę „{n}”?",name:"Nazwa",amt:"Kwota (€)",kind:"Rodzaj",freq:"Jak często",save:"Zapisz",cancel:"Anuluj",del:"Usuń",e1:"Wpisz nazwę.",e2:"Wpisz poprawną kwotę.",tI:"przychód",tE:"wydatek",tS:"oszczędność",dy:"dzień",once:"jednorazowo",addA:"+ kwota",addS:"+ pod"},
+bn:{menu:"মেনু",settings:"সেটিংস",lang:"ভাষা",gen:"সাধারণ",genOv:"সাধারণ সারসংক্ষেপ",mon:"মাস",ov:"সারসংক্ষেপ",inc:"আয়",exp:"খরচ",sav:"সঞ্চয়",left:"অবশিষ্ট (সঞ্চয়ের পর)",leftS:"অবশিষ্ট",fm:"অবশিষ্ট = আয় − খরচ − সঞ্চয়",cy:"চার্ট (পুরো বছর)",ep:"বিভাগ অনুযায়ী খরচ (এই মাস)",ip:"বিভাগ অনুযায়ী আয় (এই মাস)",nem:"এই মাসে এখনো কোনো খরচ নেই।",nim:"এই মাসে এখনো কোনো আয় নেই।",cats:"বিভাগ",nc:"+ নতুন বিভাগ",ms:"মাসিক উদ্বৃত্ত",rh:"এই মাসের পুনরাবৃত্ত পরিমাণ (এককালীন পরিমাণ গণনা হয় না)।",ri:"পুনরাবৃত্ত আয়",re:"পুনরাবৃত্ত খরচ",sa:"উদ্বৃত্ত (সঞ্চয়ের পর)",ytd:"এই বছর এখন পর্যন্ত (জানুয়ারি থেকে {m})",earn:"উপার্জিত",spent:"খরচ হয়েছে",fy:"অবশিষ্ট = উপার্জিত − খরচ − সঞ্চিত",avg:"মাসিক গড় (এই বছর এখন পর্যন্ত)",ai:"গড় আয়",ae:"গড় খরচ",as:"গড় সঞ্চয়",rec:"পুনরাবৃত্ত পরিমাণ",per:"অনুযায়ী দেখান:",wk:"সপ্তাহ",mo:"মাস",yr:"বছর",cr:"পুনরাবৃত্ত চার্ট",wt:"আমার আয় কোথায় যায়?",wh:"আপনার পুনরাবৃত্ত আয় খরচ, সঞ্চয় ও অবশিষ্টে কীভাবে ভাগ হয়।",wi:"কোন আয় সবচেয়ে বেশি?",ic:"বিভাগ অনুযায়ী আয়",wc:"কোন বিভাগে সবচেয়ে বেশি টাকা যায়?",ni:"এখনো কোনো আয় নেই।",ne:"এখনো কোনো খরচ নেই।",nb:"এখনো কোনো আয় বা খরচ নেই।",lr:"পুনরাবৃত্ত পরিমাণের তালিকা",cw:"চার্ট লোড করা যায়নি (Chart.js ব্লক করা আছে)। পেজের বাকি অংশ কাজ করছে।",nsub:"নতুন উপ-বিভাগ",ncat:"নতুন বিভাগ",ren:"বিভাগের নাম বদলান",dc:"বিভাগ মুছুন",dcm:"“{n}” বিভাগ মুছবেন? এর ভেতরের সব পরিমাণ ও উপ-বিভাগও মুছে যাবে।",nit:"নতুন পরিমাণ",eit:"পরিমাণ সম্পাদনা",di:"পরিমাণ মুছুন",dim:"“{n}” পরিমাণ মুছবেন?",name:"নাম",amt:"পরিমাণ (€)",kind:"ধরন",freq:"কতবার",save:"সংরক্ষণ",cancel:"বাতিল",del:"মুছুন",e1:"একটি নাম লিখুন।",e2:"সঠিক পরিমাণ লিখুন।",tI:"আয়",tE:"খরচ",tS:"সঞ্চয়",dy:"দিন",once:"এককালীন",addA:"+ পরিমাণ",addS:"+ উপ"},
+ur:{menu:"مینو",settings:"ترتیبات",lang:"زبان",gen:"عمومی",genOv:"عمومی جائزہ",mon:"مہینے",ov:"جائزہ",inc:"آمدنی",exp:"اخراجات",sav:"بچت",left:"باقی (بچت کے بعد)",leftS:"باقی",fm:"باقی = آمدنی − اخراجات − بچت",cy:"چارٹ (پورا سال)",ep:"زمرے کے لحاظ سے اخراجات (اس مہینے)",ip:"زمرے کے لحاظ سے آمدنی (اس مہینے)",nem:"اس مہینے ابھی کوئی خرچ نہیں۔",nim:"اس مہینے ابھی کوئی آمدنی نہیں۔",cats:"زمرے",nc:"+ نیا زمرہ",ms:"ماہانہ بچا ہوا",rh:"اس مہینے کی بار بار آنے والی رقوم (ایک بار کی رقوم شمار نہیں ہوتیں)۔",ri:"بار بار آنے والی آمدنی",re:"بار بار آنے والے اخراجات",sa:"بچا ہوا (بچت کے بعد)",ytd:"اس سال اب تک (جنوری سے {m})",earn:"کمایا",spent:"خرچ کیا",fy:"باقی = کمایا − خرچ کیا − بچایا",avg:"ماہانہ اوسط (اس سال اب تک)",ai:"اوسط آمدنی",ae:"اوسط اخراجات",as:"اوسط بچت",rec:"بار بار آنے والی رقوم",per:"اس کے لحاظ سے دکھائیں:",wk:"ہفتہ",mo:"مہینہ",yr:"سال",cr:"بار بار آنے والا چارٹ",wt:"میری آمدنی کہاں جاتی ہے؟",wh:"آپ کی بار بار آنے والی آمدنی کی اخراجات، بچت اور باقی میں تقسیم۔",wi:"کون سی آمدنی سب سے زیادہ ہے؟",ic:"زمرے کے لحاظ سے آمدنی",wc:"کس زمرے میں سب سے زیادہ پیسہ جاتا ہے؟",ni:"ابھی کوئی آمدنی نہیں۔",ne:"ابھی کوئی خرچ نہیں۔",nb:"ابھی کوئی آمدنی یا خرچ نہیں۔",lr:"بار بار آنے والی رقوم کی فہرست",cw:"چارٹ لوڈ نہیں ہو سکے (Chart.js بلاک ہے)۔ صفحے کا باقی حصہ کام کر رہا ہے۔",nsub:"نیا ذیلی زمرہ",ncat:"نیا زمرہ",ren:"زمرے کا نام بدلیں",dc:"زمرہ حذف کریں",dcm:"زمرہ «{n}» حذف کریں؟ اس کی تمام رقوم اور ذیلی زمرے بھی حذف ہو جائیں گے۔",nit:"نئی رقم",eit:"رقم میں ترمیم",di:"رقم حذف کریں",dim:"رقم «{n}» حذف کریں؟",name:"نام",amt:"رقم (€)",kind:"قسم",freq:"کتنی بار",save:"محفوظ کریں",cancel:"منسوخ",del:"حذف کریں",e1:"نام درج کریں۔",e2:"درست رقم درج کریں۔",tI:"آمدنی",tE:"خرچ",tS:"بچت",dy:"دن",once:"ایک بار",addA:"+ رقم",addS:"+ ذیلی"},
+vi:{menu:"Menu",settings:"Cài đặt",lang:"Ngôn ngữ",gen:"Chung",genOv:"Tổng quan chung",mon:"Tháng",ov:"Tổng quan",inc:"Thu nhập",exp:"Chi tiêu",sav:"Tiết kiệm",left:"Còn lại (sau tiết kiệm)",leftS:"Còn lại",fm:"Còn lại = thu nhập − chi tiêu − tiết kiệm",cy:"Biểu đồ (cả năm)",ep:"Chi tiêu theo danh mục (tháng này)",ip:"Thu nhập theo danh mục (tháng này)",nem:"Tháng này chưa có chi tiêu.",nim:"Tháng này chưa có thu nhập.",cats:"Danh mục",nc:"+ danh mục mới",ms:"Thặng dư hàng tháng",rh:"Các khoản định kỳ của tháng này (khoản một lần không tính).",ri:"Thu nhập định kỳ",re:"Chi tiêu định kỳ",sa:"Thặng dư (sau tiết kiệm)",ytd:"Năm nay đến giờ (tháng 1 đến {m})",earn:"Đã kiếm",spent:"Đã chi",fy:"Còn lại = đã kiếm − đã chi − đã tiết kiệm",avg:"Trung bình mỗi tháng (năm nay đến giờ)",ai:"Thu nhập trung bình",ae:"Chi tiêu trung bình",as:"Tiết kiệm trung bình",rec:"Các khoản định kỳ",per:"Hiển thị theo:",wk:"tuần",mo:"tháng",yr:"năm",cr:"Biểu đồ định kỳ",wt:"Thu nhập của tôi đi đâu?",wh:"Phân bổ thu nhập định kỳ vào chi tiêu, tiết kiệm và phần còn lại.",wi:"Khoản thu nhập nào cao nhất?",ic:"Thu nhập theo danh mục",wc:"Danh mục nào tốn nhiều tiền nhất?",ni:"Chưa có thu nhập.",ne:"Chưa có chi tiêu.",nb:"Chưa có thu nhập hoặc chi tiêu.",lr:"Danh sách các khoản định kỳ",cw:"Không thể tải biểu đồ (Chart.js bị chặn). Phần còn lại của trang vẫn hoạt động.",nsub:"Danh mục con mới",ncat:"Danh mục mới",ren:"Đổi tên danh mục",dc:"Xóa danh mục",dcm:"Xóa danh mục “{n}”? Mọi khoản tiền và danh mục con trong đó cũng sẽ bị xóa.",nit:"Khoản tiền mới",eit:"Sửa khoản tiền",di:"Xóa khoản tiền",dim:"Xóa khoản tiền “{n}”?",name:"Tên",amt:"Số tiền (€)",kind:"Loại",freq:"Tần suất",save:"Lưu",cancel:"Hủy",del:"Xóa",e1:"Hãy nhập tên.",e2:"Hãy nhập số tiền hợp lệ.",tI:"thu nhập",tE:"chi tiêu",tS:"tiết kiệm",dy:"ngày",once:"một lần",addA:"+ khoản",addS:"+ con"},
+uk:{menu:"Меню",settings:"Налаштування",lang:"Мова",gen:"Загальне",genOv:"Загальний огляд",mon:"Місяці",ov:"Огляд",inc:"Доходи",exp:"Витрати",sav:"Заощадження",left:"Залишок (після заощаджень)",leftS:"Залишок",fm:"Залишок = доходи − витрати − заощадження",cy:"Графік (весь рік)",ep:"Витрати за категоріями (цей місяць)",ip:"Доходи за категоріями (цей місяць)",nem:"Цього місяця витрат ще немає.",nim:"Цього місяця доходів ще немає.",cats:"Категорії",nc:"+ нова категорія",ms:"Місячний надлишок",rh:"Регулярні суми цього місяця (разові не враховуються).",ri:"Регулярні доходи",re:"Регулярні витрати",sa:"Надлишок (після заощаджень)",ytd:"Цей рік на сьогодні (січень — {m})",earn:"Зароблено",spent:"Витрачено",fy:"Залишок = зароблено − витрачено − заощаджено",avg:"У середньому за місяць (цей рік)",ai:"Середній дохід",ae:"Середні витрати",as:"Середні заощадження",rec:"Регулярні суми",per:"Показувати за:",wk:"тиждень",mo:"місяць",yr:"рік",cr:"Графік регулярних",wt:"Куди йде мій дохід?",wh:"Розподіл регулярного доходу на витрати, заощадження та залишок.",wi:"Який дохід приносить найбільше?",ic:"Доходи за категоріями",wc:"У яку категорію йде найбільше грошей?",ni:"Доходів ще немає.",ne:"Витрат ще немає.",nb:"Доходів і витрат ще немає.",lr:"Список регулярних сум",cw:"Не вдалося завантажити графіки (Chart.js заблоковано). Решта сторінки працює.",nsub:"Нова підкатегорія",ncat:"Нова категорія",ren:"Перейменувати категорію",dc:"Видалити категорію",dcm:"Видалити категорію «{n}»? Усі суми та підкатегорії в ній також буде видалено.",nit:"Нова сума",eit:"Редагувати суму",di:"Видалити суму",dim:"Видалити суму «{n}»?",name:"Назва",amt:"Сума (€)",kind:"Тип",freq:"Як часто",save:"Зберегти",cancel:"Скасувати",del:"Видалити",e1:"Введіть назву.",e2:"Введіть коректну суму.",tI:"дохід",tE:"витрата",tS:"заощадження",dy:"день",once:"разово",addA:"+ сума",addS:"+ під"}
+};
+
+let lang = "nl";
+try { const s=localStorage.getItem("bt_lang"); if(s && TR[s]) lang=s; } catch(e){}
+function t(k){ return (TR[lang] && TR[lang][k]) || TR.en[k] || TR.nl[k] || k; }
+
+function monthName(i, style){
+  let s;
+  try { s = new Date(2024,i,1).toLocaleDateString(lang,{month:style}); }
+  catch(e){ s = new Date(2024,i,1).toLocaleDateString("en",{month:style}); }
+  return s.charAt(0).toLocaleUpperCase(lang)+s.slice(1);
+}
+let months=[], monthsFull=[];
+
+/* ================= GEGEVENS ================= */
+const data = { categories: [] };
+const NOW = new Date().getMonth();
+let currentMonth = NOW;
+let page = "month";   // "month" of "general"
+
+/* Kleuren van de grafieken (ongewijzigd) */
+const C_INC="#16a34a", C_EXP="#dc2626", C_SAV="#2563eb", C_REST="#0d9488";
+const PALETTE=["#dc2626","#f59e0b","#8b5cf6","#ec4899","#0ea5e9","#84cc16","#f97316","#14b8a6","#a855f7","#64748b"];
+const PALETTE_INC=["#16a34a","#22c55e","#15803d","#4ade80","#166534","#86efac","#65a30d","#a3e635"];
+
+function fmt(n){ return (n||0).toFixed(2); }
+function money(n){ return (n<0?"-":"")+"€"+Math.abs(n).toFixed(2); }
+function $(id){ return document.getElementById(id); }
+
+/* Labels voor soort en frequentie (waarden in de gegevens blijven Nederlands) */
+function typeLabel(v){ return v==="inkomen"?t("tI"):(v==="sparen"?t("tS"):t("tE")); }
+function freqLabel(v){
+  return ({dag:t("dy"),week:t("wk"),maand:t("mo"),jaar:t("yr"),eenmalig:t("once")})[v] || v;
+}
+function periodLabel(v){ return ({week:t("wk"),maand:t("mo"),jaar:t("yr")})[v] || v; }
+
+/* ---------- Berekeningen ---------- */
+function monthly(item){
+  switch(item.freq){
+    case "dag": return item.amount*30;
+    case "week": return item.amount*4.33;
+    case "maand": return item.amount;
+    case "jaar": return item.amount/12;
+    default: return 0;
+  }
+}
+function calcItem(item, month){
+  if(month < item.startMonth) return 0;
+  if(item.freq==="eenmalig") return month===item.startMonth ? item.amount : 0;
+  return monthly(item);
+}
+function eachItem(fn){
+  function walk(cat, top){
+    cat.items.forEach(i=>fn(i, top));
+    cat.children.forEach(c=>walk(c, top));
+  }
+  data.categories.forEach(c=>walk(c, c));
+}
+/* Over = inkomsten - uitgaven - sparen */
+function sumMonth(month, recurringOnly){
+  let inc=0, exp=0, sav=0;
+  eachItem(i=>{
+    if(recurringOnly && i.freq==="eenmalig") return;
+    const v=calcItem(i,month);
+    if(i.type==="inkomen") inc+=v;
+    else if(i.type==="sparen") sav+=v;
+    else exp+=v;
+  });
+  return {inc, exp, sav, rest: inc-exp-sav};
+}
+function catTotal(cat, type, valueFn){
+  let tt=0;
+  cat.items.forEach(i=>{ if(i.type===type) tt+=valueFn(i); });
+  cat.children.forEach(c=>{ tt+=catTotal(c,type,valueFn); });
+  return tt;
+}
+function catType(cat){
+  const val=i=> i.freq==="eenmalig" ? Math.abs(i.amount) : Math.abs(monthly(i));
+  const a=catTotal(cat,"inkomen",val), b=catTotal(cat,"uitgave",val), c=catTotal(cat,"sparen",val);
+  if(a===0 && b===0 && c===0) return "leeg";
+  if(a>=b && a>=c) return "inkomen";
+  if(b>=a && b>=c) return "uitgave";
+  return "sparen";
+}
+
+/* ---------- Invulvenster ---------- */
+function openForm(title, fields, onSave, opts){
+  opts = opts || {};
+  const overlay=document.createElement("div");
+  overlay.className="overlay";
+  const box=document.createElement("div");
+  box.className="modal";
+  const h=document.createElement("h3");
+  h.textContent=title;
+  box.appendChild(h);
+  if(opts.message){
+    const p=document.createElement("p");
+    p.textContent=opts.message;
+    box.appendChild(p);
+  }
+  const inputs={};
+  fields.forEach(f=>{
+    const lb=document.createElement("label");
+    lb.textContent=f.label;
+    let el;
+    if(f.type==="select"){
+      el=document.createElement("select");
+      f.options.forEach(o=>{
+        const op=document.createElement("option");
+        op.value=o[0]; op.textContent=o[1];
+        if(o[0]===f.value) op.selected=true;
+        el.appendChild(op);
+      });
+    } else {
+      el=document.createElement("input");
+      el.type=f.type||"text";
+      if(f.type==="number") el.step="0.01";
+      el.value = (f.value===undefined||f.value===null) ? "" : f.value;
+    }
+    inputs[f.key]=el;
+    lb.appendChild(el);
+    box.appendChild(lb);
+  });
+  const err=document.createElement("div");
+  err.className="err";
+  box.appendChild(err);
+  const btns=document.createElement("div");
+  btns.className="btns";
+  const cancel=document.createElement("button");
+  cancel.className="btn-cancel";
+  cancel.textContent=t("cancel");
+  cancel.onclick=()=>document.body.removeChild(overlay);
+  const ok=document.createElement("button");
+  ok.textContent=opts.saveText||t("save");
+  if(opts.danger) ok.className="btn-del";
+  ok.onclick=()=>{
+    const values={};
+    fields.forEach(f=>{ values[f.key]=inputs[f.key].value; });
+    const e=onSave(values);
+    if(e){ err.textContent=e; return; }
+    document.body.removeChild(overlay);
+  };
+  btns.appendChild(cancel);
+  btns.appendChild(ok);
+  box.appendChild(btns);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  const first=fields.length?inputs[fields[0].key]:null;
+  if(first) first.focus();
+}
+
+function itemFields(def, recurringOnly){
+  const fr = recurringOnly ? ["dag","week","maand","jaar"] : ["dag","week","maand","jaar","eenmalig"];
+  return [
+    {key:"label", label:t("name"), type:"text", value:def?def.label:""},
+    {key:"amount", label:t("amt"), type:"number", value:def?def.amount:""},
+    {key:"type", label:t("kind"), type:"select", options:["inkomen","uitgave","sparen"].map(v=>[v,typeLabel(v)]), value:def?def.type:"uitgave"},
+    {key:"freq", label:t("freq"), type:"select", options:fr.map(v=>[v,freqLabel(v)]), value:def?def.freq:"maand"}
+  ];
+}
+function readItem(v){
+  const label=v.label.trim();
+  if(!label) return {error:t("e1")};
+  const amount=parseFloat(String(v.amount).replace(",","."));
+  if(isNaN(amount)) return {error:t("e2")};
+  return {item:{label, amount, type:v.type, freq:v.freq}};
+}
+
+/* ---------- Categorieën & bedragen ---------- */
+function addCategory(parent){
+  openForm(parent?t("nsub"):t("ncat"),
+    [{key:"name", label:t("name"), type:"text"}],
+    v=>{
+      const name=v.name.trim();
+      if(!name) return t("e1");
+      const cat={ name, children:[], items:[], collapsed:false };
+      (parent ? parent.children : data.categories).push(cat);
+      if(parent) parent.collapsed=false;
+      refreshAll();
+    });
+}
+function renameCat(cat){
+  openForm(t("ren"),
+    [{key:"name", label:t("name"), type:"text", value:cat.name}],
+    v=>{
+      const name=v.name.trim();
+      if(!name) return t("e1");
+      cat.name=name;
+      refreshAll();
+    });
+}
+function deleteCat(list, idx){
+  const cat=list[idx];
+  if(!cat) return;
+  openForm(t("dc"), [],
+    ()=>{ list.splice(idx,1); refreshAll(); },
+    {message:t("dcm").replace("{n}",cat.name), saveText:t("del"), danger:true});
+}
+function addItem(cat){
+  const recurringOnly = page==="general";
+  openForm(t("nit"), itemFields(null, recurringOnly), v=>{
+    const r=readItem(v);
+    if(r.error) return r.error;
+    r.item.startMonth = recurringOnly ? 0 : currentMonth;
+    cat.items.push(r.item);
+    cat.collapsed=false;
+    refreshAll();
+  });
+}
+function editItem(cat, index){
+  const item=cat.items[index];
+  if(!item) return;
+  const recurringOnly = page==="general";
+  openForm(t("eit"), itemFields(item, recurringOnly), v=>{
+    const r=readItem(v);
+    if(r.error) return r.error;
+    item.label=r.item.label;
+    item.amount=r.item.amount;
+    item.type=r.item.type;
+    item.freq=r.item.freq;
+    refreshAll();
+  });
+}
+function deleteItem(cat, index){
+  const item=cat.items[index];
+  if(!item) return;
+  openForm(t("di"), [],
+    ()=>{ cat.items.splice(index,1); refreshAll(); },
+    {message:t("dim").replace("{n}",item.label), saveText:t("del"), danger:true});
+}
+
+function makeBtn(text, cls, fn, title){
+  const b=document.createElement("button");
+  b.className=cls;
+  b.textContent=text;
+  if(title) b.title=title;
+  b.onclick=fn;
+  return b;
+}
+
+function renderCategory(cat, parent, list, idx, ctx, isSub){
+  const block=document.createElement("div");
+  block.className="cat-block"+(cat.collapsed?" collapsed":"");
+
+  const bar=document.createElement("div");
+  bar.className="cat-bar t-"+catType(cat)+(isSub?" sub":"");
+
+  const tg=makeBtn(cat.collapsed?"▸":"▾","small toggle",()=>{
+    cat.collapsed=!cat.collapsed;
+    block.classList.toggle("collapsed", cat.collapsed);
+    tg.textContent=cat.collapsed?"▸":"▾";
+  });
+  bar.appendChild(tg);
+
+  const nm=document.createElement("strong");
+  nm.textContent=cat.name;
+  bar.appendChild(nm);
+  bar.appendChild(makeBtn(t("addA"),"small",()=>addItem(cat)));
+  bar.appendChild(makeBtn(t("addS"),"small",()=>addCategory(cat),t("nsub")));
+  bar.appendChild(makeBtn("✏️","small btn-edit",()=>renameCat(cat),t("ren")));
+  bar.appendChild(makeBtn("🗑️","small btn-del",()=>deleteCat(list,idx),t("dc")));
+  block.appendChild(bar);
+
+  const body=document.createElement("div");
+  body.className="cat-body";
+  block.appendChild(body);
+  parent.appendChild(block);
+
+  cat.items.forEach((i,index)=>{
+    if(!ctx.filter(i)) return;
+    const el=document.createElement("div");
+    el.className="item";
+    const lb=document.createElement("span");
+    lb.className="nm";
+    lb.textContent=i.label;
+    const bd=document.createElement("span");
+    bd.className="badge";
+    bd.textContent=typeLabel(i.type)+" · "+freqLabel(i.freq);
+    const am=document.createElement("span");
+    am.className = "am " + (i.type==="inkomen" ? "income" : (i.type==="sparen" ? "saving" : "expense"));
+    am.textContent=ctx.amountText(i);
+    el.appendChild(lb); el.appendChild(bd); el.appendChild(am);
+    el.appendChild(makeBtn("✏️","small btn-edit",()=>editItem(cat,index),t("eit")));
+    el.appendChild(makeBtn("🗑️","small btn-del",()=>deleteItem(cat,index),t("di")));
+    body.appendChild(el);
+  });
+  cat.children.forEach((c,ci)=>renderCategory(c, body, cat.children, ci, ctx, true));
+}
+
+/* ---------- Grafiek-hulpjes ---------- */
+const charts={};
+function chartsAvailable(){
+  const ok = typeof Chart !== "undefined";
+  $("chartWarn").style.display = ok ? "none" : "block";
+  if(ok){
+    Chart.defaults.color="#cbd5e1";
+    Chart.defaults.borderColor="rgba(255,255,255,0.08)";
+  }
+  return ok;
+}
+function drawChart(key, canvasId, config){
+  if(charts[key]){ charts[key].destroy(); charts[key]=null; }
+  if(!chartsAvailable()) return;
+  try { charts[key]=new Chart($(canvasId), config); }
+  catch(e){ console.error("Grafiek fout:", e); }
+}
+function drawPie(key, canvasId, emptyId, labels, values, colors){
+  const canvas=$(canvasId), empty=$(emptyId);
+  const total=values.reduce((a,b)=>a+b,0);
+  if(charts[key]){ charts[key].destroy(); charts[key]=null; }
+  if(!(total>0)){
+    canvas.style.display="none";
+    empty.style.display="block";
+    return;
+  }
+  canvas.style.display="block";
+  empty.style.display="none";
+  drawChart(key, canvasId, {
+    type:"pie",
+    data:{ labels:labels, datasets:[{ data:values, backgroundColor:colors, borderColor:"#15122b", borderWidth:2 }] },
+    options:{ responsive:true, plugins:{ legend:{ position:"bottom" } } }
+  });
+}
+function pieDataByCategory(type, palette, valueFn){
+  const labels=[], values=[], colors=[];
+  data.categories.forEach(c=>{
+    const tt=catTotal(c,type,valueFn);
+    if(tt>0){
+      labels.push(c.name);
+      values.push(Math.round(tt*100)/100);
+      colors.push(palette[colors.length % palette.length]);
+    }
+  });
+  return {labels, values, colors};
+}
+function expensePieData(valueFn){ return pieDataByCategory("uitgave", PALETTE, valueFn); }
+function incomePieData(valueFn){ return pieDataByCategory("inkomen", PALETTE_INC, valueFn); }
+
+/* ================= MAANDPAGINA ================= */
+const monthCtx = {
+  filter: ()=>true,
+  amountText: i=>"€"+fmt(calcItem(i,currentMonth))
+};
+
+function renderMonthPage(){
+  $("monthName").textContent=monthsFull[currentMonth];
+  const r=sumMonth(currentMonth,false);
+  $("mInc").textContent=fmt(r.inc);
+  $("mExp").textContent=fmt(r.exp);
+  $("mSav").textContent=fmt(r.sav);
+  const rest=$("mRest");
+  rest.textContent=money(r.rest);
+  rest.className=r.rest<0?"negative":"positive";
+
+  const root=$("categories");
+  root.innerHTML="";
+  data.categories.forEach((c,i)=>renderCategory(c, root, data.categories, i, monthCtx, false));
+
+  const rc=sumMonth(currentMonth,true);
+  $("recInc").textContent=fmt(rc.inc);
+  $("recExp").textContent=fmt(rc.exp);
+  $("recSav").textContent=fmt(rc.sav);
+  const bal=$("recBal");
+  bal.textContent=money(rc.rest);
+  bal.className=rc.rest<0?"negative":"positive";
+
+  const inc=[], exp=[], sav=[], rst=[];
+  for(let m=0;m<12;m++){
+    const s=sumMonth(m,false);
+    inc.push(s.inc); exp.push(s.exp); sav.push(s.sav); rst.push(s.rest);
+  }
+  const ds=[];
+  if($("showIncome").checked) ds.push({label:t("inc"), data:inc, backgroundColor:C_INC, borderRadius:6});
+  if($("showExpense").checked) ds.push({label:t("exp"), data:exp, backgroundColor:C_EXP, borderRadius:6});
+  if($("showSaving").checked) ds.push({label:t("sav"), data:sav, backgroundColor:C_SAV, borderRadius:6});
+  if($("showRest").checked) ds.push({label:t("leftS"), data:rst, backgroundColor:C_REST, borderRadius:6});
+  drawChart("bar","chart",{ type:"bar", data:{ labels:months, datasets:ds }});
+
+  const p=expensePieData(i=>calcItem(i,currentMonth));
+  drawPie("pie","pieChart","pieEmpty",p.labels,p.values,p.colors);
+
+  const q=incomePieData(i=>calcItem(i,currentMonth));
+  drawPie("incPie","incPieChart","incPieEmpty",q.labels,q.values,q.colors);
+}
+["showIncome","showExpense","showSaving","showRest"].forEach(id=>{
+  $(id).addEventListener("change", ()=>renderMonthPage());
+});
+
+/* ================= ALGEMENE PAGINA ================= */
+const periodFactor = { week:12/52, maand:1, jaar:12 };
+const genCtx = {
+  filter: i=>i.freq!=="eenmalig",
+  amountText: i=>"€"+fmt(monthly(i)*periodFactor[$("genPeriod").value])+" / "+periodLabel($("genPeriod").value)
+};
+
+function renderGeneralPage(){
+  $("ytdTitle").textContent=t("ytd").replace("{m}",monthsFull[NOW]);
+  let inc=0, exp=0, sav=0;
+  for(let m=0;m<=NOW;m++){
+    const s=sumMonth(m,false);
+    inc+=s.inc; exp+=s.exp; sav+=s.sav;
+  }
+  const n=NOW+1;
+  $("yInc").textContent=fmt(inc);
+  $("yExp").textContent=fmt(exp);
+  $("ySav").textContent=fmt(sav);
+  const yr=$("yRest");
+  yr.textContent=money(inc-exp-sav);
+  yr.className=(inc-exp-sav)<0?"negative":"positive";
+  $("aInc").textContent=fmt(inc/n);
+  $("aExp").textContent=fmt(exp/n);
+  $("aSav").textContent=fmt(sav/n);
+
+  const period=$("genPeriod").value;
+  const f=periodFactor[period];
+  let rInc=0, rExp=0, rSav=0;
+  const incMap={};
+  eachItem(i=>{
+    if(i.freq==="eenmalig") return;
+    const v=monthly(i)*f;
+    if(i.type==="inkomen"){ rInc+=v; incMap[i.label]=(incMap[i.label]||0)+v; }
+    else if(i.type==="sparen") rSav+=v;
+    else rExp+=v;
+  });
+  const rRest=rInc-rExp-rSav;
+  $("gInc").textContent=fmt(rInc);
+  $("gExp").textContent=fmt(rExp);
+  $("gSav").textContent=fmt(rSav);
+  const gb=$("gBal");
+  gb.textContent=money(rRest)+" / "+periodLabel(period);
+  gb.className=rRest<0?"negative":"positive";
+
+  const root=$("genCategories");
+  root.innerHTML="";
+  data.categories.forEach((c,i)=>renderCategory(c, root, data.categories, i, genCtx, false));
+
+  drawChart("genBar","genBar",{
+    type:"bar",
+    data:{
+      labels:[t("inc"),t("exp"),t("sav"),t("leftS")],
+      datasets:[{
+        label:"€ / "+periodLabel(period),
+        data:[rInc, rExp, rSav, rRest],
+        backgroundColor:[C_INC, C_EXP, C_SAV, rRest<0?"#f59e0b":C_REST],
+        borderRadius:8
+      }]
+    },
+    options:{ plugins:{ legend:{ display:false } } }
+  });
+
+  drawPie("pSaldo","genPieSaldo","genPieSaldoEmpty",
+    [t("exp"),t("sav"),t("leftS")],
+    [Math.round(rExp*100)/100, Math.round(rSav*100)/100, Math.round(Math.max(rRest,0)*100)/100],
+    [C_EXP, C_SAV, C_REST]);
+
+  const il=[], iv=[], ic=[];
+  Object.keys(incMap).forEach(k=>{
+    il.push(k); iv.push(Math.round(incMap[k]*100)/100); ic.push(PALETTE_INC[ic.length % PALETTE_INC.length]);
+  });
+  drawPie("pInc","genPieInc","genPieIncEmpty",il,iv,ic);
+
+  const q=incomePieData(i=> i.freq==="eenmalig" ? 0 : monthly(i)*f);
+  drawPie("pIncCat","genPieIncCat","genPieIncCatEmpty",q.labels,q.values,q.colors);
+
+  const p=expensePieData(i=> i.freq==="eenmalig" ? 0 : monthly(i)*f);
+  drawPie("pExp","genPieExp","genPieExpEmpty",p.labels,p.values,p.colors);
+}
+$("genPeriod").addEventListener("change", ()=>renderGeneralPage());
+
+/* ================= PANELEN INKLAPBAAR ================= */
+document.querySelectorAll(".panel").forEach(p=>{
+  const h=p.querySelector("h3");
+  if(!h) return;
+  h.classList.add("panel-head");
+  h.onclick=()=>{
+    p.classList.toggle("collapsed");
+    if(!p.classList.contains("collapsed")){
+      setTimeout(()=>{ Object.values(charts).forEach(c=>{ if(c) c.resize(); }); }, 30);
+    }
+  };
+});
+
+/* ================= MENU'S ================= */
+function openMenu(){ closeAll(); $("sidebar").classList.add("open"); $("backdrop").classList.add("open"); }
+function openSettings(){ closeAll(); $("settingsBar").classList.add("open"); $("backdrop").classList.add("open"); }
+function closeAll(){
+  $("sidebar").classList.remove("open");
+  $("settingsBar").classList.remove("open");
+  $("backdrop").classList.remove("open");
+}
+$("menuBtn").onclick=openMenu;
+$("gearBtn").onclick=openSettings;
+$("closeMenu").onclick=closeAll;
+$("closeSettings").onclick=closeAll;
+$("backdrop").onclick=closeAll;
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeAll(); });
+
+function renderNav(){
+  const box=$("sideContent");
+  box.innerHTML="";
+
+  const l1=document.createElement("div");
+  l1.className="side-label"; l1.textContent=t("gen");
+  box.appendChild(l1);
+  const g=document.createElement("button");
+  g.className="side-item"+(page==="general"?" active":"");
+  g.textContent="📊 "+t("genOv");
+  g.onclick=()=>{ page="general"; closeAll(); refreshAll(); };
+  box.appendChild(g);
+
+  const l2=document.createElement("div");
+  l2.className="side-label"; l2.textContent=t("mon");
+  box.appendChild(l2);
+  monthsFull.forEach((m,i)=>{
+    const b=document.createElement("button");
+    b.className="side-item"+(page==="month" && i===currentMonth?" active":"");
+    b.textContent="📅 "+m;
+    b.onclick=()=>{ page="month"; currentMonth=i; closeAll(); refreshAll(); };
+    box.appendChild(b);
+  });
+
+  $("pageLabel").textContent = page==="general" ? t("genOv") : monthsFull[currentMonth];
+}
+
+function renderLangList(){
+  const box=$("langList");
+  box.innerHTML="";
+  LANGS.forEach(L=>{
+    const b=document.createElement("button");
+    b.className="side-item"+(L.c===lang?" active":"");
+    b.textContent=L.f+"  "+L.n;
+    b.onclick=()=>{ setLang(L.c); };
+    box.appendChild(b);
+  });
+}
+
+function setLang(c){
+  lang=c;
+  try { localStorage.setItem("bt_lang", c); } catch(e){}
+  applyLang();
+  closeAll();
+}
+
+function applyLang(){
+  const L=LANGS.find(x=>x.c===lang) || LANGS[0];
+  document.documentElement.lang=lang;
+  document.documentElement.dir=L.rtl?"rtl":"ltr";
+  months=[]; monthsFull=[];
+  for(let i=0;i<12;i++){ months.push(monthName(i,"short")); monthsFull.push(monthName(i,"long")); }
+  document.querySelectorAll("[data-i]").forEach(e=>{ e.textContent=t(e.dataset.i); });
+  $("chartWarn").textContent=t("cw");
+  const opts=$("genPeriod").options;
+  opts[0].textContent=t("wk"); opts[1].textContent=t("mo"); opts[2].textContent=t("yr");
+  renderLangList();
+  refreshAll();
+}
+
+function refreshAll(){
+  renderNav();
+  $("pageMonth").style.display = page==="month" ? "block" : "none";
+  $("pageGeneral").style.display = page==="general" ? "block" : "none";
+  try {
+    if(page==="month") renderMonthPage(); else renderGeneralPage();
+  } catch(e){ console.error(e); }
+}
+
+applyLang();
+</script>
+</body>
+</html>
