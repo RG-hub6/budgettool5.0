@@ -6,55 +6,176 @@
 <title>Budgettool 5.0</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
-body { font-family: Arial, sans-serif; background:#f4f6fb; margin:0; }
-header { background:#4f46e5; color:white; padding:15px; text-align:center; }
-header h1 { margin:0 0 10px 0; }
-main { padding:15px; }
-.panel { background:white; padding:15px; border-radius:10px; margin-bottom:15px; }
-button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; background:#4f46e5; color:white; }
-button.small { font-size:12px; padding:4px 8px; }
-input, select { padding:6px; margin:4px 0; }
-.nav { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
-.nav button { background:rgba(255,255,255,0.2); color:white; padding:8px 10px; }
-.nav button.active { background:white; color:#4f46e5; font-weight:bold; }
-.tree { margin-left:20px; border-left:2px solid #ddd; padding-left:10px; }
-.cat-title { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:4px 0; }
-.item { display:flex; gap:6px; align-items:center; margin:4px 0; flex-wrap:wrap; }
-.badge { font-size:11px; background:#e5e7eb; border-radius:6px; padding:2px 6px; }
-.income { color:#16a34a; }
-.expense { color:#dc2626; }
-.saving { color:#2563eb; }
-.positive { color:#16a34a; }
-.negative { color:#dc2626; }
-canvas { max-width:100%; }
-label { margin-right:10px; }
-.pie-box { max-width:400px; margin:0 auto; }
-.row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eee; }
-.row.total { font-size:1.2em; font-weight:bold; border-bottom:none; padding-top:12px; }
-.hint { font-size:13px; color:#6b7280; margin-top:0; }
-.empty { display:none; text-align:center; color:#6b7280; }
-.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:10px 0; }
-.card { border-radius:10px; padding:10px; background:#f4f6fb; text-align:center; }
-.card small { display:block; color:#6b7280; margin-bottom:4px; }
-.card strong { font-size:1.2em; }
-button.btn-edit { background:#16a34a; color:white; }
-button.btn-del { background:#dc2626; color:white; }
-button.btn-cancel { background:#9ca3af; }
-.warn { display:none; background:#fef3c7; color:#92400e; padding:10px; border-radius:8px; margin-bottom:15px; }
-.overlay { position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:100; padding:10px; }
-.modal { background:white; border-radius:12px; padding:18px; width:100%; max-width:360px; box-sizing:border-box; }
-.modal h3 { margin-top:0; }
-.modal label { display:block; margin:8px 0 0 0; font-size:13px; color:#374151; }
-.modal input, .modal select { width:100%; box-sizing:border-box; margin:3px 0; }
-.modal .err { color:#dc2626; font-size:13px; margin-top:8px; }
-.modal .btns { display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
+:root{
+  --bg:#07060f;
+  --bg2:#0f0b24;
+  --panel:#15122b;
+  --panel2:#1d1840;
+  --line:rgba(255,255,255,0.08);
+  --text:#e8e6f5;
+  --muted:#9a96b8;
+  --accent:#6d5efc;
+  --accent2:#8b5cf6;
+  --green:#16a34a;
+  --red:#dc2626;
+  --blue:#2563eb;
+  --t-green:#4ade80;
+  --t-red:#f87171;
+  --t-blue:#60a5fa;
+}
+*{ box-sizing:border-box; }
+body{
+  font-family:"Segoe UI",Roboto,Arial,sans-serif;
+  background:linear-gradient(160deg,var(--bg) 0%,#0b0a1e 45%,#150d33 100%) fixed;
+  color:var(--text);
+  margin:0;
+  min-height:100vh;
+}
+h1,h2,h3,h4{ margin:0 0 10px 0; }
+h3{ font-size:1.05em; }
+
+/* ---------- Header ---------- */
+header{
+  position:sticky; top:0; z-index:50;
+  display:flex; align-items:center; gap:14px;
+  padding:12px 16px;
+  background:rgba(10,8,28,0.85);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+header .titles{ display:flex; flex-direction:column; }
+header h1{ font-size:1.2em; margin:0; }
+header .sub{ font-size:12px; color:var(--muted); }
+.menu-btn{
+  width:44px; height:44px; border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+  padding:0; flex-shrink:0;
+}
+.menu-btn span{ display:block; width:20px; height:2px; background:white; border-radius:2px; }
+
+/* ---------- Zijmenu ---------- */
+.backdrop{
+  position:fixed; inset:0; background:rgba(0,0,0,0.6);
+  opacity:0; pointer-events:none; transition:opacity .25s; z-index:80;
+}
+.backdrop.open{ opacity:1; pointer-events:auto; }
+.sidebar{
+  position:fixed; top:0; left:0; bottom:0; width:270px; max-width:82vw;
+  background:linear-gradient(180deg,#120d2e,#070612);
+  border-right:1px solid var(--line);
+  transform:translateX(-102%); transition:transform .28s ease;
+  z-index:90; display:flex; flex-direction:column; padding:18px 14px; overflow-y:auto;
+}
+.sidebar.open{ transform:translateX(0); box-shadow:10px 0 40px rgba(0,0,0,0.5); }
+.sidebar .side-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sidebar .side-head strong{ font-size:1.1em; }
+.sidebar .close{ background:rgba(255,255,255,0.08); width:34px; height:34px; border-radius:10px; padding:0; }
+.side-label{ font-size:11px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin:14px 6px 6px; }
+.side-item{
+  display:block; width:100%; text-align:left;
+  background:transparent; color:var(--text);
+  padding:11px 14px; border-radius:12px; margin-bottom:3px; font-size:15px;
+}
+.side-item:hover{ background:rgba(255,255,255,0.07); }
+.side-item.active{ background:linear-gradient(135deg,var(--accent),var(--accent2)); font-weight:bold; }
+
+/* ---------- Basis ---------- */
+main{ padding:16px; max-width:900px; margin:0 auto; }
+.panel{
+  background:linear-gradient(160deg,var(--panel),#100c24);
+  border:1px solid var(--line);
+  padding:18px; border-radius:20px; margin-bottom:16px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.35);
+}
+button{
+  padding:8px 14px; border:none; border-radius:12px; cursor:pointer;
+  background:linear-gradient(135deg,var(--accent),var(--accent2)); color:white; font-size:14px;
+}
+button:hover{ filter:brightness(1.12); }
+button.small{ font-size:12px; padding:5px 10px; border-radius:10px; }
+input, select{
+  padding:9px 12px; margin:4px 0; border-radius:12px;
+  border:1px solid var(--line); background:#0c0920; color:var(--text); font-size:14px;
+}
+input:focus, select:focus{ outline:2px solid var(--accent); }
+select option{ background:#0c0920; color:var(--text); }
+input[type=checkbox]{ accent-color:var(--accent); margin-right:4px; }
+label{ margin-right:10px; }
+canvas{ max-width:100%; }
+.pie-box{ max-width:400px; margin:0 auto; }
+.hint{ font-size:13px; color:var(--muted); margin-top:0; }
+.empty{ display:none; text-align:center; color:var(--muted); }
+.income{ color:var(--t-green); }
+.expense{ color:var(--t-red); }
+.saving{ color:var(--t-blue); }
+.positive{ color:var(--t-green); }
+.negative{ color:var(--t-red); }
+.row{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); }
+.row.total{ font-size:1.2em; font-weight:bold; border-bottom:none; padding-top:14px; }
+.cards{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:10px 0; }
+.card{ border-radius:16px; padding:12px; background:rgba(255,255,255,0.05); border:1px solid var(--line); text-align:center; }
+.card small{ display:block; color:var(--muted); margin-bottom:4px; }
+.card strong{ font-size:1.2em; }
+.warn{ display:none; background:#3b2a05; color:#fcd34d; padding:12px; border-radius:14px; margin-bottom:16px; }
+
+/* ---------- Categorieën ---------- */
+.cat-block{ margin-top:12px; }
+.cat-bar{
+  display:flex; gap:6px; align-items:center; flex-wrap:wrap;
+  padding:10px 12px; border-radius:16px; color:white;
+  box-shadow:0 4px 14px rgba(0,0,0,0.35);
+}
+.cat-bar strong{ font-size:1.05em; margin-right:auto; }
+.cat-bar.t-inkomen{ background:linear-gradient(135deg,#15803d,#16a34a); }
+.cat-bar.t-uitgave{ background:linear-gradient(135deg,#b91c1c,#dc2626); }
+.cat-bar.t-sparen{ background:linear-gradient(135deg,#1d4ed8,#2563eb); }
+.cat-bar.t-leeg{ background:linear-gradient(135deg,#4c1d95,#6d28d9); }
+.cat-bar button{ background:rgba(0,0,0,0.3); }
+.cat-bar button.btn-edit, .cat-bar button.btn-del{ background:rgba(0,0,0,0.35); }
+.cat-bar.sub{ padding:7px 10px; border-radius:12px; opacity:0.92; box-shadow:none; }
+.cat-bar.sub strong{ font-size:0.95em; }
+.cat-body{ margin:6px 0 0 14px; padding-left:10px; border-left:2px solid var(--line); }
+.item{
+  display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  margin:6px 0; padding:8px 12px; border-radius:14px;
+  background:rgba(255,255,255,0.05); border:1px solid var(--line);
+}
+.item .nm{ font-weight:600; }
+.item .am{ margin-left:auto; font-weight:bold; }
+.badge{ font-size:11px; background:rgba(255,255,255,0.1); color:var(--muted); border-radius:999px; padding:3px 9px; }
+button.btn-edit{ background:#16a34a; color:white; }
+button.btn-del{ background:#dc2626; color:white; }
+button.btn-cancel{ background:#4b4870; }
+
+/* ---------- Invulvenster ---------- */
+.overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex; align-items:center; justify-content:center; z-index:200; padding:12px; }
+.modal{ background:linear-gradient(160deg,#1a1540,#100c24); border:1px solid var(--line); border-radius:22px; padding:22px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+.modal h3{ margin-top:0; font-size:1.2em; }
+.modal label{ display:block; margin:10px 0 0 0; font-size:13px; color:var(--muted); }
+.modal input, .modal select{ width:100%; margin:4px 0; }
+.modal .err{ color:var(--t-red); font-size:13px; margin-top:8px; }
+.modal .btns{ display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
 </style>
 </head>
 <body>
+
 <header>
-  <h1>Budgettool 5.0</h1>
-  <div class="nav" id="nav"></div>
+  <button class="menu-btn" id="menuBtn" aria-label="Menu openen"><span></span><span></span><span></span></button>
+  <div class="titles">
+    <h1>Budgettool 5.0</h1>
+    <div class="sub" id="pageLabel"></div>
+  </div>
 </header>
+
+<div class="backdrop" id="backdrop"></div>
+<nav class="sidebar" id="sidebar">
+  <div class="side-head">
+    <strong>Menu</strong>
+    <button class="close" id="closeMenu" aria-label="Menu sluiten">✕</button>
+  </div>
+  <div id="sideContent"></div>
+</nav>
 
 <main>
 <div class="warn" id="chartWarn">De grafieken kunnen niet geladen worden (Chart.js wordt geblokkeerd). De rest van de pagina werkt wel.</div>
@@ -112,7 +233,7 @@ button.btn-cancel { background:#9ca3af; }
       <div class="card"><small>Gespaard</small><strong class="saving">€<span id="ySav">0.00</span></strong></div>
       <div class="card"><small>Over</small><strong id="yRest">€0.00</strong></div>
     </div>
-    <h4 style="margin-bottom:0;">Gemiddeld per maand (dit jaar tot nu)</h4>
+    <h4 style="margin:14px 0 0 0;">Gemiddeld per maand (dit jaar tot nu)</h4>
     <div class="cards">
       <div class="card"><small>Gemiddeld inkomen</small><strong class="income">€<span id="aInc">0.00</span></strong></div>
       <div class="card"><small>Gemiddelde uitgaven</small><strong class="expense">€<span id="aExp">0.00</span></strong></div>
@@ -175,6 +296,7 @@ const NOW = new Date().getMonth();
 let currentMonth = NOW;
 let page = "month";   // "month" of "general"
 
+/* Kleuren van de grafieken (ongewijzigd) */
 const C_INC="#16a34a", C_EXP="#dc2626", C_SAV="#2563eb", C_REST="#0d9488";
 const PALETTE=["#dc2626","#f59e0b","#8b5cf6","#ec4899","#0ea5e9","#84cc16","#f97316","#14b8a6","#a855f7","#64748b"];
 const PALETTE_INC=["#16a34a","#22c55e","#15803d","#4ade80","#166534","#86efac","#65a30d","#a3e635"];
@@ -222,8 +344,17 @@ function catTotal(cat, type, valueFn){
   cat.children.forEach(c=>{ t+=catTotal(c,type,valueFn); });
   return t;
 }
+/* Kleur van het balkje: soort met het grootste bedrag in de categorie */
+function catType(cat){
+  const val=i=> i.freq==="eenmalig" ? Math.abs(i.amount) : Math.abs(monthly(i));
+  const a=catTotal(cat,"inkomen",val), b=catTotal(cat,"uitgave",val), c=catTotal(cat,"sparen",val);
+  if(a===0 && b===0 && c===0) return "leeg";
+  if(a>=b && a>=c) return "inkomen";
+  if(b>=a && b>=c) return "uitgave";
+  return "sparen";
+}
 
-/* ---------- Invulvenster (vervangt prompt en confirm) ---------- */
+/* ---------- Invulvenster ---------- */
 function openForm(title, fields, onSave, opts){
   opts = opts || {};
   const overlay=document.createElement("div");
@@ -376,47 +507,57 @@ function makeBtn(text, cls, fn, title){
   return b;
 }
 
-/* Tekent een categorie met knoppen. ctx.filter en ctx.amountText bepalen wat getoond wordt. */
-function renderCategory(cat, parent, list, idx, ctx){
-  const div=document.createElement("div");
-  div.className="tree";
-  const title=document.createElement("div");
-  title.className="cat-title";
+/* Tekent een categorie als gekleurd balkje met de bedragen eronder */
+function renderCategory(cat, parent, list, idx, ctx, isSub){
+  const block=document.createElement("div");
+  block.className="cat-block";
+
+  const bar=document.createElement("div");
+  bar.className="cat-bar t-"+catType(cat)+(isSub?" sub":"");
   const nm=document.createElement("strong");
   nm.textContent=cat.name;
-  title.appendChild(nm);
-  title.appendChild(makeBtn("+ bedrag","small",()=>addItem(cat)));
-  title.appendChild(makeBtn("+ subcategorie","small",()=>addCategory(cat)));
-  title.appendChild(makeBtn("✏️","small btn-edit",()=>renameCat(cat),"Categorie hernoemen"));
-  title.appendChild(makeBtn("🗑️","small btn-del",()=>deleteCat(list,idx),"Categorie verwijderen"));
-  div.appendChild(title);
-  parent.appendChild(div);
+  bar.appendChild(nm);
+  bar.appendChild(makeBtn("+ bedrag","small",()=>addItem(cat)));
+  bar.appendChild(makeBtn("+ sub","small",()=>addCategory(cat),"Subcategorie toevoegen"));
+  bar.appendChild(makeBtn("✏️","small btn-edit",()=>renameCat(cat),"Categorie hernoemen"));
+  bar.appendChild(makeBtn("🗑️","small btn-del",()=>deleteCat(list,idx),"Categorie verwijderen"));
+  block.appendChild(bar);
+
+  const body=document.createElement("div");
+  body.className="cat-body";
+  block.appendChild(body);
+  parent.appendChild(block);
 
   cat.items.forEach((i,index)=>{
     if(!ctx.filter(i)) return;
     const el=document.createElement("div");
     el.className="item";
     const lb=document.createElement("span");
+    lb.className="nm";
     lb.textContent=i.label;
     const bd=document.createElement("span");
     bd.className="badge";
     bd.textContent=i.type+" · "+i.freq;
     const am=document.createElement("span");
-    am.className = i.type==="inkomen" ? "income" : (i.type==="sparen" ? "saving" : "expense");
+    am.className = "am " + (i.type==="inkomen" ? "income" : (i.type==="sparen" ? "saving" : "expense"));
     am.textContent=ctx.amountText(i);
     el.appendChild(lb); el.appendChild(bd); el.appendChild(am);
     el.appendChild(makeBtn("✏️","small btn-edit",()=>editItem(cat,index),"Bewerken"));
     el.appendChild(makeBtn("🗑️","small btn-del",()=>deleteItem(cat,index),"Verwijderen"));
-    div.appendChild(el);
+    body.appendChild(el);
   });
-  cat.children.forEach((c,ci)=>renderCategory(c, div, cat.children, ci, ctx));
+  cat.children.forEach((c,ci)=>renderCategory(c, body, cat.children, ci, ctx, true));
 }
 
-/* ---------- Grafiek-hulpjes (veilig: een fout stopt de rest niet) ---------- */
+/* ---------- Grafiek-hulpjes ---------- */
 const charts={};
 function chartsAvailable(){
   const ok = typeof Chart !== "undefined";
   $("chartWarn").style.display = ok ? "none" : "block";
+  if(ok){
+    Chart.defaults.color="#cbd5e1";
+    Chart.defaults.borderColor="rgba(255,255,255,0.08)";
+  }
   return ok;
 }
 function drawChart(key, canvasId, config){
@@ -438,7 +579,7 @@ function drawPie(key, canvasId, emptyId, labels, values, colors){
   empty.style.display="none";
   drawChart(key, canvasId, {
     type:"pie",
-    data:{ labels:labels, datasets:[{ data:values, backgroundColor:colors }] },
+    data:{ labels:labels, datasets:[{ data:values, backgroundColor:colors, borderColor:"#15122b", borderWidth:2 }] },
     options:{ responsive:true, plugins:{ legend:{ position:"bottom" } } }
   });
 }
@@ -471,12 +612,10 @@ function renderMonthPage(){
   rest.textContent=money(r.rest);
   rest.className=r.rest<0?"negative":"positive";
 
-  /* Lijst */
   const root=$("categories");
   root.innerHTML="";
-  data.categories.forEach((c,i)=>renderCategory(c, root, data.categories, i, monthCtx));
+  data.categories.forEach((c,i)=>renderCategory(c, root, data.categories, i, monthCtx, false));
 
-  /* Overschot (terugkerend) */
   const rc=sumMonth(currentMonth,true);
   $("recInc").textContent=fmt(rc.inc);
   $("recExp").textContent=fmt(rc.exp);
@@ -485,20 +624,18 @@ function renderMonthPage(){
   bal.textContent=money(rc.rest);
   bal.className=rc.rest<0?"negative":"positive";
 
-  /* Staafgrafiek hele jaar */
   const inc=[], exp=[], sav=[], rst=[];
   for(let m=0;m<12;m++){
     const s=sumMonth(m,false);
     inc.push(s.inc); exp.push(s.exp); sav.push(s.sav); rst.push(s.rest);
   }
   const ds=[];
-  if($("showIncome").checked) ds.push({label:"Inkomsten", data:inc, backgroundColor:C_INC});
-  if($("showExpense").checked) ds.push({label:"Uitgaven", data:exp, backgroundColor:C_EXP});
-  if($("showSaving").checked) ds.push({label:"Sparen", data:sav, backgroundColor:C_SAV});
-  if($("showRest").checked) ds.push({label:"Over", data:rst, backgroundColor:C_REST});
+  if($("showIncome").checked) ds.push({label:"Inkomsten", data:inc, backgroundColor:C_INC, borderRadius:6});
+  if($("showExpense").checked) ds.push({label:"Uitgaven", data:exp, backgroundColor:C_EXP, borderRadius:6});
+  if($("showSaving").checked) ds.push({label:"Sparen", data:sav, backgroundColor:C_SAV, borderRadius:6});
+  if($("showRest").checked) ds.push({label:"Over", data:rst, backgroundColor:C_REST, borderRadius:6});
   drawChart("bar","chart",{ type:"bar", data:{ labels:months, datasets:ds }});
 
-  /* Cirkeldiagram uitgaven */
   const p=expensePieData(i=>calcItem(i,currentMonth));
   drawPie("pie","pieChart","pieEmpty",p.labels,p.values,p.colors);
 }
@@ -514,7 +651,6 @@ const genCtx = {
 };
 
 function renderGeneralPage(){
-  /* Dit jaar tot nu */
   $("ytdMonth").textContent=monthsFull[NOW];
   let inc=0, exp=0, sav=0;
   for(let m=0;m<=NOW;m++){
@@ -532,7 +668,6 @@ function renderGeneralPage(){
   $("aExp").textContent=fmt(exp/n);
   $("aSav").textContent=fmt(sav/n);
 
-  /* Terugkerend per gekozen periode */
   const period=$("genPeriod").value;
   const f=periodFactor[period];
   let rInc=0, rExp=0, rSav=0;
@@ -552,12 +687,10 @@ function renderGeneralPage(){
   gb.textContent=money(rRest)+" per "+period;
   gb.className=rRest<0?"negative":"positive";
 
-  /* Lijst */
   const root=$("genCategories");
   root.innerHTML="";
-  data.categories.forEach((c,i)=>renderCategory(c, root, data.categories, i, genCtx));
+  data.categories.forEach((c,i)=>renderCategory(c, root, data.categories, i, genCtx, false));
 
-  /* Staafgrafiek */
   drawChart("genBar","genBar",{
     type:"bar",
     data:{
@@ -565,48 +698,62 @@ function renderGeneralPage(){
       datasets:[{
         label:"€ per "+period,
         data:[rInc, rExp, rSav, rRest],
-        backgroundColor:[C_INC, C_EXP, C_SAV, rRest<0?"#f59e0b":C_REST]
+        backgroundColor:[C_INC, C_EXP, C_SAV, rRest<0?"#f59e0b":C_REST],
+        borderRadius:8
       }]
     },
     options:{ plugins:{ legend:{ display:false } } }
   });
 
-  /* Cirkel 1: waar gaat mijn inkomen naartoe (uitgaven / sparen / over) */
   drawPie("pSaldo","genPieSaldo","genPieSaldoEmpty",
     ["Uitgaven","Gespaard","Over"],
     [Math.round(rExp*100)/100, Math.round(rSav*100)/100, Math.round(Math.max(rRest,0)*100)/100],
     [C_EXP, C_SAV, C_REST]);
 
-  /* Cirkel 2: welk inkomen brengt het meeste op */
   const il=[], iv=[], ic=[];
   Object.keys(incMap).forEach(k=>{
     il.push(k); iv.push(Math.round(incMap[k]*100)/100); ic.push(PALETTE_INC[ic.length % PALETTE_INC.length]);
   });
   drawPie("pInc","genPieInc","genPieIncEmpty",il,iv,ic);
 
-  /* Cirkel 3: uitgaven per categorie */
   const p=expensePieData(i=> i.freq==="eenmalig" ? 0 : monthly(i)*f);
   drawPie("pExp","genPieExp","genPieExpEmpty",p.labels,p.values,p.colors);
 }
 $("genPeriod").addEventListener("change", ()=>renderGeneralPage());
 
-/* ================= NAVIGATIE ================= */
+/* ================= MENU ================= */
+function openMenu(){ $("sidebar").classList.add("open"); $("backdrop").classList.add("open"); }
+function closeMenu(){ $("sidebar").classList.remove("open"); $("backdrop").classList.remove("open"); }
+$("menuBtn").onclick=openMenu;
+$("closeMenu").onclick=closeMenu;
+$("backdrop").onclick=closeMenu;
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeMenu(); });
+
 function renderNav(){
-  const nav=$("nav");
-  nav.innerHTML="";
-  months.forEach((m,i)=>{
-    const b=document.createElement("button");
-    b.textContent=m;
-    b.title=monthsFull[i];
-    if(page==="month" && i===currentMonth) b.className="active";
-    b.onclick=()=>{ page="month"; currentMonth=i; refreshAll(); };
-    nav.appendChild(b);
-  });
+  const box=$("sideContent");
+  box.innerHTML="";
+
+  const l1=document.createElement("div");
+  l1.className="side-label"; l1.textContent="Algemeen";
+  box.appendChild(l1);
   const g=document.createElement("button");
-  g.textContent="Algemeen";
-  if(page==="general") g.className="active";
-  g.onclick=()=>{ page="general"; refreshAll(); };
-  nav.appendChild(g);
+  g.className="side-item"+(page==="general"?" active":"");
+  g.textContent="📊 Algemeen overzicht";
+  g.onclick=()=>{ page="general"; closeMenu(); refreshAll(); };
+  box.appendChild(g);
+
+  const l2=document.createElement("div");
+  l2.className="side-label"; l2.textContent="Maanden";
+  box.appendChild(l2);
+  monthsFull.forEach((m,i)=>{
+    const b=document.createElement("button");
+    b.className="side-item"+(page==="month" && i===currentMonth?" active":"");
+    b.textContent="📅 "+m;
+    b.onclick=()=>{ page="month"; currentMonth=i; closeMenu(); refreshAll(); };
+    box.appendChild(b);
+  });
+
+  $("pageLabel").textContent = page==="general" ? "Algemeen overzicht" : monthsFull[currentMonth];
 }
 
 function refreshAll(){
