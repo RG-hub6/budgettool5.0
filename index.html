@@ -14,6 +14,7 @@ button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; backg
 button.small { font-size:12px; padding:4px 8px; }
 input, select { padding:6px; margin:4px 0; }
 .tree { margin-left:20px; border-left:2px solid #ddd; padding-left:10px; }
+.cat-title { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:4px 0; }
 .item { display:flex; gap:6px; align-items:center; margin:4px 0; flex-wrap:wrap; }
 .badge { font-size:11px; background:#e5e7eb; border-radius:6px; padding:2px 6px; }
 .income { color:green; }
@@ -25,52 +26,102 @@ label { margin-right:10px; }
 .surplus-total { font-size:1.3em; font-weight:bold; border-bottom:none; padding-top:12px; }
 .positive { color:green; }
 .negative { color:red; }
-button.icon { background:#e5e7eb; color:#111; padding:3px 7px; font-size:13px; }
+button.btn-edit { background:#16a34a; color:white; }
+button.btn-del { background:#dc2626; color:white; }
+.tabs { margin:8px 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+button.tab { background:rgba(255,255,255,0.2); color:white; padding:8px 14px; }
+button.tab.active { background:white; color:#4f46e5; font-weight:bold; }
 </style>
 </head>
 <body>
 <header>
   <h1>Budgettool 5.0</h1>
+  <div class="tabs">
+    <button id="tabMonth" class="tab active">Maandoverzicht</button>
+    <button id="tabGeneral" class="tab">Algemeen</button>
+  </div>
   <select id="monthSelect"></select>
 </header>
 
 <main>
-<div class="panel">
-  <h3>Overzicht deze maand</h3>
-  <p>Inkomsten: €<span id="inc">0</span></p>
-  <p>Uitgaven: €<span id="exp">0</span></p>
-  <h3>Saldo: €<span id="bal">0</span></h3>
-</div>
 
-<div class="panel">
-  <h3>Grafiek (per maand)</h3>
-  <label><input type="checkbox" id="showIncome" checked> Inkomsten</label>
-  <label><input type="checkbox" id="showExpense" checked> Uitgaven</label>
-  <label><input type="checkbox" id="showSaldo" checked> Saldo</label>
-  <canvas id="chart"></canvas>
-</div>
-
-<div class="panel">
-  <h3>Uitgaven per categorie (deze maand)</h3>
-  <div class="pie-box">
-    <canvas id="pieChart"></canvas>
+<!-- ============ PAGINA: MAANDOVERZICHT ============ -->
+<div id="pageMonth">
+  <div class="panel">
+    <h3>Overzicht deze maand</h3>
+    <p>Inkomsten: €<span id="inc">0</span></p>
+    <p>Uitgaven: €<span id="exp">0</span></p>
+    <h3>Saldo: €<span id="bal">0</span></h3>
   </div>
-  <p id="pieEmpty" style="display:none; text-align:center; color:#6b7280;">Nog geen uitgaven deze maand.</p>
+
+  <div class="panel">
+    <h3>Grafiek (per maand)</h3>
+    <label><input type="checkbox" id="showIncome" checked> Inkomsten</label>
+    <label><input type="checkbox" id="showExpense" checked> Uitgaven</label>
+    <label><input type="checkbox" id="showSaldo" checked> Saldo</label>
+    <canvas id="chart"></canvas>
+  </div>
+
+  <div class="panel">
+    <h3>Uitgaven per categorie (deze maand)</h3>
+    <div class="pie-box">
+      <canvas id="pieChart"></canvas>
+    </div>
+    <p id="pieEmpty" style="display:none; text-align:center; color:#6b7280;">Nog geen uitgaven deze maand.</p>
+  </div>
+
+  <div class="panel">
+    <h3>Categorieën</h3>
+    <button onclick="addCategory()">+ nieuwe categorie</button>
+    <div id="categories"></div>
+  </div>
+
+  <div class="panel">
+    <h3>Maandelijks overschot</h3>
+    <p style="font-size:13px; color:#6b7280; margin-top:0;">Terugkerende inkomsten min terugkerende uitgaven (eenmalige bedragen tellen niet mee).</p>
+    <div class="surplus-row"><span>Terugkerende inkomsten (loon, ...)</span><span class="income">€<span id="recInc">0.00</span></span></div>
+    <div class="surplus-row"><span>Terugkerende uitgaven</span><span class="expense">€<span id="recExp">0.00</span></span></div>
+    <div class="surplus-row surplus-total"><span>Overschot per maand</span><span id="recBal" class="positive">€0.00</span></div>
+  </div>
 </div>
 
-<div class="panel">
-  <h3>Categorieën</h3>
-  <button onclick="addCategory()">+ nieuwe categorie</button>
-  <div id="categories"></div>
+<!-- ============ PAGINA: ALGEMEEN ============ -->
+<div id="pageGeneral" style="display:none;">
+  <div class="panel">
+    <h3>Algemeen overzicht (terugkerende bedragen)</h3>
+    <label>Toon bedragen per:
+      <select id="genPeriod">
+        <option value="week">week</option>
+        <option value="maand" selected>maand</option>
+        <option value="jaar">jaar</option>
+      </select>
+    </label>
+    <p>Inkomsten: €<span id="genInc">0.00</span></p>
+    <p>Uitgaven: €<span id="genExp">0.00</span></p>
+    <h3>Overschot: <span id="genBal" class="positive">€0.00</span></h3>
+  </div>
+
+  <div class="panel">
+    <h3>Grafiek</h3>
+    <canvas id="genBar"></canvas>
+  </div>
+
+  <div class="panel">
+    <h3>Uitgaven per categorie</h3>
+    <div class="pie-box">
+      <canvas id="genPie"></canvas>
+    </div>
+    <p id="genPieEmpty" style="display:none; text-align:center; color:#6b7280;">Nog geen uitgaven.</p>
+  </div>
+
+  <div class="panel">
+    <h3>Terugkerende bedragen</h3>
+    <button onclick="addGenCategory()">+ nieuwe categorie</button>
+    <div id="genCategories"></div>
+  </div>
 </div>
 
-<div class="panel">
-  <h3>Maandelijks overschot</h3>
-  <p style="font-size:13px; color:#6b7280; margin-top:0;">Terugkerende inkomsten min terugkerende uitgaven (eenmalige bedragen tellen niet mee).</p>
-  <div class="surplus-row"><span>Terugkerende inkomsten (loon, ...)</span><span class="income">€<span id="recInc">0.00</span></span></div>
-  <div class="surplus-row"><span>Terugkerende uitgaven</span><span class="expense">€<span id="recExp">0.00</span></span></div>
-  <div class="surplus-row surplus-total"><span>Overschot per maand</span><span id="recBal" class="positive">€0.00</span></div>
-</div>
+</main>
 
 <script>
 const data = { categories: [] };
@@ -87,6 +138,407 @@ months.forEach((m,i)=>{
 monthSelect.value=currentMonth;
 monthSelect.onchange=()=>{ currentMonth=+monthSelect.value; render(); };
 
-/* Categorie & Item functies */
+/* ---------- Hulpfuncties (voor beide pagina's) ---------- */
+function makeBtn(text, cls, fn, title){
+  const b=document.createElement("button");
+  b.className=cls;
+  b.textContent=text;
+  if(title) b.title=title;
+  b.onclick=fn;
+  return b;
+}
+
+function renameCat(cat, refresh){
+  const name = prompt("Nieuwe naam categorie:", cat.name);
+  if(name===null || !name.trim()) return;
+  cat.name = name.trim();
+  refresh();
+}
+
+function deleteCat(list, idx, refresh){
+  const cat = list[idx];
+  if(!cat) return;
+  if(!confirm('Categorie "' + cat.name + '" verwijderen? Alle bedragen en subcategorieën erin worden ook verwijderd.')) return;
+  list.splice(idx, 1);
+  refresh();
+}
+
+function deleteItem(cat, index, refresh){
+  const item = cat.items[index];
+  if(!item) return;
+  if(!confirm('Bedrag "' + item.label + '" verwijderen?')) return;
+  cat.items.splice(index, 1);
+  (refresh || render)();
+}
+
+/* Tekent een categorie met knoppen. ctx bepaalt wat de knoppen doen. */
+function renderCategory(cat, parent, list, idx, ctx){
+  const div=document.createElement("div");
+  div.className="tree";
+
+  const title=document.createElement("div");
+  title.className="cat-title";
+  const nm=document.createElement("strong");
+  nm.textContent=cat.name;
+  title.appendChild(nm);
+  title.appendChild(makeBtn("+ bedrag","small",()=>ctx.addItem(cat)));
+  title.appendChild(makeBtn("+ subcategorie","small",()=>ctx.addSub(cat)));
+  title.appendChild(makeBtn("✏️","small btn-edit",()=>renameCat(cat, ctx.refresh),"Categorie hernoemen"));
+  title.appendChild(makeBtn("🗑️","small btn-del",()=>deleteCat(list, idx, ctx.refresh),"Categorie verwijderen"));
+  div.appendChild(title);
+  parent.appendChild(div);
+
+  cat.items.forEach((i, index)=>{
+    const el=document.createElement("div");
+    el.className="item";
+    const lb=document.createElement("span");
+    lb.textContent=i.label;
+    const bd=document.createElement("span");
+    bd.className="badge";
+    bd.textContent=i.freq;
+    const am=document.createElement("span");
+    am.className=(i.type==="inkomen"?"income":"expense");
+    am.textContent=ctx.amountText(i);
+    el.appendChild(lb);
+    el.appendChild(bd);
+    el.appendChild(am);
+    el.appendChild(makeBtn("✏️","small btn-edit",()=>ctx.editItem(cat,index),"Bewerken"));
+    el.appendChild(makeBtn("🗑️","small btn-del",()=>deleteItem(cat,index,ctx.refresh),"Verwijderen"));
+    div.appendChild(el);
+  });
+
+  cat.children.forEach((c, ci)=>{
+    renderCategory(c, div, cat.children, ci, ctx);
+  });
+}
+
+/* ================= MAANDOVERZICHT ================= */
+
 function addCategory(parent){
-  const name =
+  const name = prompt("Naam categorie:");
+  if(!name) return;
+  const cat = { name, children:[], items:[] };
+  (parent ? parent.children : data.categories).push(cat);
+  render();
+}
+function addItem(cat){
+  const label = prompt("Naam bedrag:");
+  if(!label) return;
+  const amount = parseFloat(prompt("Bedrag (€):"));
+  if(isNaN(amount)) return;
+  const type = prompt("inkomen of uitgave","uitgave");
+  const freq = prompt("dag / week / maand / jaar / eenmalig","maand");
+  cat.items.push({ label, amount, type, freq, startMonth: currentMonth });
+  render();
+}
+
+function editItem(cat, index){
+  const item = cat.items[index];
+  if(!item) return;
+
+  const label = prompt("Naam bedrag:", item.label);
+  if(label === null) return;
+  const amountText = prompt("Bedrag (€):", item.amount);
+  if(amountText === null) return;
+  const amount = parseFloat(String(amountText).replace(",", "."));
+  if(isNaN(amount)){ alert("Ongeldig bedrag. Er is niets gewijzigd."); return; }
+  const type = prompt("inkomen of uitgave", item.type);
+  if(type === null) return;
+  const freq = prompt("dag / week / maand / jaar / eenmalig", item.freq);
+  if(freq === null) return;
+
+  const validTypes = ["inkomen","uitgave"];
+  const validFreqs = ["dag","week","maand","jaar","eenmalig"];
+  const newType = type.trim().toLowerCase();
+  const newFreq = freq.trim().toLowerCase();
+  if(!validTypes.includes(newType)){ alert("Type moet 'inkomen' of 'uitgave' zijn. Er is niets gewijzigd."); return; }
+  if(!validFreqs.includes(newFreq)){ alert("Frequentie moet dag, week, maand, jaar of eenmalig zijn. Er is niets gewijzigd."); return; }
+
+  item.label = label.trim() || item.label;
+  item.amount = amount;
+  item.type = newType;
+  item.freq = newFreq;
+  render();
+}
+
+function calcItem(item, month){
+  if(month < item.startMonth) return 0;
+  switch(item.freq){
+    case "dag": return item.amount * 30;
+    case "week": return item.amount * 4.33;
+    case "maand": return item.amount;
+    case "jaar": return item.amount / 12;
+    case "eenmalig": return month===item.startMonth ? item.amount : 0;
+    default: return 0;
+  }
+}
+
+function sumMonth(month){
+  let inc=0, exp=0;
+  function walk(cat){
+    cat.items.forEach(i=>{
+      const v=calcItem(i,month);
+      if(i.type==="inkomen") inc+=v; else exp+=v;
+    });
+    cat.children.forEach(walk);
+  }
+  data.categories.forEach(walk);
+  return {inc, exp, saldo: inc-exp};
+}
+
+function sumRecurring(month){
+  let inc=0, exp=0;
+  function walk(cat){
+    cat.items.forEach(i=>{
+      if(i.freq==="eenmalig") return;
+      const v=calcItem(i,month);
+      if(i.type==="inkomen") inc+=v; else exp+=v;
+    });
+    cat.children.forEach(walk);
+  }
+  data.categories.forEach(walk);
+  return {inc, exp, saldo: inc-exp};
+}
+
+const monthCtx = {
+  refresh: ()=>render(),
+  addItem: (cat)=>addItem(cat),
+  addSub: (cat)=>addCategory(cat),
+  editItem: (cat,i)=>editItem(cat,i),
+  amountText: (i)=>"€"+calcItem(i,currentMonth).toFixed(2)
+};
+
+let chart;
+function renderChart(){
+  const inc=[], exp=[], saldo=[];
+  for(let m=0;m<12;m++){
+    const r=sumMonth(m);
+    inc.push(r.inc); exp.push(r.exp); saldo.push(r.saldo);
+  }
+  if(chart) chart.destroy();
+  const datasets=[];
+  if(document.getElementById("showIncome").checked)
+    datasets.push({label:"Inkomsten", data:inc, backgroundColor:"green"});
+  if(document.getElementById("showExpense").checked)
+    datasets.push({label:"Uitgaven", data:exp, backgroundColor:"red"});
+  if(document.getElementById("showSaldo").checked)
+    datasets.push({label:"Saldo", data:saldo, backgroundColor:"blue"});
+  chart=new Chart(document.getElementById("chart"),{ type:"bar", data:{ labels:months, datasets:datasets }});
+}
+
+let pieChart;
+function sumCatExpenses(cat, month){
+  let total=0;
+  cat.items.forEach(i=>{
+    if(i.type!=="inkomen") total+=calcItem(i,month);
+  });
+  cat.children.forEach(c=>{ total+=sumCatExpenses(c,month); });
+  return total;
+}
+function renderPie(){
+  const labels=[], values=[];
+  data.categories.forEach(c=>{
+    const t=sumCatExpenses(c,currentMonth);
+    if(t>0){ labels.push(c.name); values.push(Math.round(t*100)/100); }
+  });
+  if(pieChart) pieChart.destroy();
+  const canvas=document.getElementById("pieChart");
+  const empty=document.getElementById("pieEmpty");
+  if(values.length===0){
+    canvas.style.display="none";
+    empty.style.display="block";
+    return;
+  }
+  canvas.style.display="block";
+  empty.style.display="none";
+  pieChart=new Chart(canvas,{
+    type:"pie",
+    data:{ labels:labels, datasets:[{ data:values }] },
+    options:{ responsive:true, plugins:{ legend:{ position:"bottom" } } }
+  });
+}
+
+function renderSurplus(){
+  const r=sumRecurring(currentMonth);
+  document.getElementById("recInc").textContent=r.inc.toFixed(2);
+  document.getElementById("recExp").textContent=r.exp.toFixed(2);
+  const bal=document.getElementById("recBal");
+  bal.textContent=(r.saldo<0?"-":"")+"€"+Math.abs(r.saldo).toFixed(2);
+  bal.className=r.saldo<0?"negative":"positive";
+}
+
+document.getElementById("showIncome").addEventListener("change", renderChart);
+document.getElementById("showExpense").addEventListener("change", renderChart);
+document.getElementById("showSaldo").addEventListener("change", renderChart);
+
+function render(){
+  const r=sumMonth(currentMonth);
+  document.getElementById("inc").textContent=r.inc.toFixed(2);
+  document.getElementById("exp").textContent=r.exp.toFixed(2);
+  document.getElementById("bal").textContent=r.saldo.toFixed(2);
+
+  const root=document.getElementById("categories");
+  root.innerHTML="";
+  data.categories.forEach((c,i)=>{ renderCategory(c, root, data.categories, i, monthCtx); });
+  renderChart();
+  renderPie();
+  renderSurplus();
+}
+
+/* ================= ALGEMENE PAGINA ================= */
+
+const gen = { categories: [] };      // aparte gegevens, los van de maanden
+let genPeriod = "maand";
+const genDivisor = { week:52, maand:12, jaar:1 };
+const genMultiplier = { dag:365, week:52, maand:12, jaar:1 };
+
+function genYearly(item){
+  return item.amount * (genMultiplier[item.freq] || 0);
+}
+function genPeriodAmount(item){
+  return genYearly(item) / genDivisor[genPeriod];
+}
+
+function askGenItem(def){
+  const label = prompt("Naam bedrag:", def ? def.label : "");
+  if(label===null || !label.trim()) return null;
+  const aText = prompt("Bedrag (€):", def ? def.amount : "");
+  if(aText===null) return null;
+  const amount = parseFloat(String(aText).replace(",", "."));
+  if(isNaN(amount)){ alert("Ongeldig bedrag. Er is niets gewijzigd."); return null; }
+  const typeIn = prompt("inkomen of uitgave", def ? def.type : "uitgave");
+  if(typeIn===null) return null;
+  const type = typeIn.trim().toLowerCase();
+  if(type!=="inkomen" && type!=="uitgave"){ alert("Type moet 'inkomen' of 'uitgave' zijn. Er is niets gewijzigd."); return null; }
+  const freqIn = prompt("week / maand / jaar", def ? def.freq : "maand");
+  if(freqIn===null) return null;
+  const freq = freqIn.trim().toLowerCase();
+  if(!["week","maand","jaar"].includes(freq)){ alert("Frequentie moet week, maand of jaar zijn. Er is niets gewijzigd."); return null; }
+  return { label:label.trim(), amount, type, freq };
+}
+
+function addGenCategory(parent){
+  const name = prompt("Naam categorie:");
+  if(!name || !name.trim()) return;
+  const cat = { name:name.trim(), children:[], items:[] };
+  (parent ? parent.children : gen.categories).push(cat);
+  renderGeneral();
+}
+function addGenItem(cat){
+  const it = askGenItem(null);
+  if(!it) return;
+  cat.items.push(it);
+  renderGeneral();
+}
+function editGenItem(cat, index){
+  const item = cat.items[index];
+  if(!item) return;
+  const it = askGenItem(item);
+  if(!it) return;
+  item.label = it.label;
+  item.amount = it.amount;
+  item.type = it.type;
+  item.freq = it.freq;
+  renderGeneral();
+}
+
+const genCtx = {
+  refresh: ()=>renderGeneral(),
+  addItem: (cat)=>addGenItem(cat),
+  addSub: (cat)=>addGenCategory(cat),
+  editItem: (cat,i)=>editGenItem(cat,i),
+  amountText: (i)=>"€"+genPeriodAmount(i).toFixed(2)+" per "+genPeriod
+};
+
+function sumGen(){
+  let inc=0, exp=0;
+  function walk(cat){
+    cat.items.forEach(i=>{
+      const v=genPeriodAmount(i);
+      if(i.type==="inkomen") inc+=v; else exp+=v;
+    });
+    cat.children.forEach(walk);
+  }
+  gen.categories.forEach(walk);
+  return {inc, exp, saldo: inc-exp};
+}
+function sumGenExpenses(cat){
+  let total=0;
+  cat.items.forEach(i=>{
+    if(i.type!=="inkomen") total+=genPeriodAmount(i);
+  });
+  cat.children.forEach(c=>{ total+=sumGenExpenses(c); });
+  return total;
+}
+
+let genBarChart, genPieChart;
+function renderGeneral(){
+  genPeriod = document.getElementById("genPeriod").value;
+  const r=sumGen();
+  document.getElementById("genInc").textContent=r.inc.toFixed(2);
+  document.getElementById("genExp").textContent=r.exp.toFixed(2);
+  const bal=document.getElementById("genBal");
+  bal.textContent=(r.saldo<0?"-":"")+"€"+Math.abs(r.saldo).toFixed(2)+" per "+genPeriod;
+  bal.className=r.saldo<0?"negative":"positive";
+
+  /* Lijst */
+  const root=document.getElementById("genCategories");
+  root.innerHTML="";
+  gen.categories.forEach((c,i)=>{ renderCategory(c, root, gen.categories, i, genCtx); });
+
+  /* Staafgrafiek */
+  if(genBarChart) genBarChart.destroy();
+  genBarChart=new Chart(document.getElementById("genBar"),{
+    type:"bar",
+    data:{
+      labels:["Inkomsten","Uitgaven","Overschot"],
+      datasets:[{
+        label:"€ per "+genPeriod,
+        data:[r.inc, r.exp, r.saldo],
+        backgroundColor:["green","red", r.saldo<0?"orange":"blue"]
+      }]
+    },
+    options:{ plugins:{ legend:{ display:false } } }
+  });
+
+  /* Cirkeldiagram */
+  const labels=[], values=[];
+  gen.categories.forEach(c=>{
+    const t=sumGenExpenses(c);
+    if(t>0){ labels.push(c.name); values.push(Math.round(t*100)/100); }
+  });
+  if(genPieChart) genPieChart.destroy();
+  const canvas=document.getElementById("genPie");
+  const empty=document.getElementById("genPieEmpty");
+  if(values.length===0){
+    canvas.style.display="none";
+    empty.style.display="block";
+    return;
+  }
+  canvas.style.display="block";
+  empty.style.display="none";
+  genPieChart=new Chart(canvas,{
+    type:"pie",
+    data:{ labels:labels, datasets:[{ data:values }] },
+    options:{ responsive:true, plugins:{ legend:{ position:"bottom" } } }
+  });
+}
+document.getElementById("genPeriod").addEventListener("change", renderGeneral);
+
+/* ================= TABBLADEN ================= */
+function showPage(name){
+  const isMonth = name==="month";
+  document.getElementById("pageMonth").style.display = isMonth ? "block" : "none";
+  document.getElementById("pageGeneral").style.display = isMonth ? "none" : "block";
+  document.getElementById("monthSelect").style.display = isMonth ? "inline-block" : "none";
+  document.getElementById("tabMonth").className = "tab" + (isMonth ? " active" : "");
+  document.getElementById("tabGeneral").className = "tab" + (isMonth ? "" : " active");
+  if(isMonth) render(); else renderGeneral();
+}
+document.getElementById("tabMonth").onclick = ()=>showPage("month");
+document.getElementById("tabGeneral").onclick = ()=>showPage("general");
+
+setTimeout(()=>render(),100);
+</script>
+</body>
+</html>
