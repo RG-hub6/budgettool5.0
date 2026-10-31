@@ -88,6 +88,13 @@ main{ padding:16px; max-width:900px; margin:0 auto; }
   padding:18px; border-radius:20px; margin-bottom:16px;
   box-shadow:0 8px 24px rgba(0,0,0,0.35);
 }
+/* Inklapbare panelen */
+.panel-head{ cursor:pointer; position:relative; padding-right:30px; user-select:none; }
+.panel-head::after{ content:"▾"; position:absolute; right:0; top:0; color:var(--muted); font-size:1.1em; }
+.panel.collapsed .panel-head{ margin-bottom:0; }
+.panel.collapsed .panel-head::after{ content:"▸"; }
+.panel.collapsed > *:not(.panel-head){ display:none !important; }
+
 button{
   padding:8px 14px; border:none; border-radius:12px; cursor:pointer;
   background:linear-gradient(135deg,var(--accent),var(--accent2)); color:white; font-size:14px;
@@ -133,9 +140,11 @@ canvas{ max-width:100%; }
 .cat-bar.t-leeg{ background:linear-gradient(135deg,#4c1d95,#6d28d9); }
 .cat-bar button{ background:rgba(0,0,0,0.3); }
 .cat-bar button.btn-edit, .cat-bar button.btn-del{ background:rgba(0,0,0,0.35); }
+.cat-bar button.toggle{ background:rgba(0,0,0,0.35); width:30px; padding:5px 0; }
 .cat-bar.sub{ padding:7px 10px; border-radius:12px; opacity:0.92; box-shadow:none; }
 .cat-bar.sub strong{ font-size:0.95em; }
 .cat-body{ margin:6px 0 0 14px; padding-left:10px; border-left:2px solid var(--line); }
+.cat-block.collapsed > .cat-body{ display:none; }
 .item{
   display:flex; gap:8px; align-items:center; flex-wrap:wrap;
   margin:6px 0; padding:8px 12px; border-radius:14px;
@@ -188,8 +197,9 @@ button.btn-cancel{ background:#4b4870; }
       <div class="card"><small>Inkomsten</small><strong class="income">€<span id="mInc">0.00</span></strong></div>
       <div class="card"><small>Uitgaven</small><strong class="expense">€<span id="mExp">0.00</span></strong></div>
       <div class="card"><small>Gespaard</small><strong class="saving">€<span id="mSav">0.00</span></strong></div>
-      <div class="card"><small>Over</small><strong id="mRest">€0.00</strong></div>
+      <div class="card"><small>Over (na sparen)</small><strong id="mRest">€0.00</strong></div>
     </div>
+    <p class="hint">Over = inkomsten − uitgaven − sparen</p>
   </div>
 
   <div class="panel">
@@ -208,6 +218,12 @@ button.btn-cancel{ background:#4b4870; }
   </div>
 
   <div class="panel">
+    <h3>Inkomsten per categorie (deze maand)</h3>
+    <div class="pie-box"><canvas id="incPieChart"></canvas></div>
+    <p class="empty" id="incPieEmpty">Nog geen inkomsten deze maand.</p>
+  </div>
+
+  <div class="panel">
     <h3>Categorieën</h3>
     <button onclick="addCategory()">+ nieuwe categorie</button>
     <div id="categories"></div>
@@ -219,7 +235,7 @@ button.btn-cancel{ background:#4b4870; }
     <div class="row"><span>Terugkerende inkomsten</span><span class="income">€<span id="recInc">0.00</span></span></div>
     <div class="row"><span>Terugkerende uitgaven</span><span class="expense">€<span id="recExp">0.00</span></span></div>
     <div class="row"><span>Sparen</span><span class="saving">€<span id="recSav">0.00</span></span></div>
-    <div class="row total"><span>Overschot per maand</span><span id="recBal">€0.00</span></div>
+    <div class="row total"><span>Overschot (na sparen)</span><span id="recBal">€0.00</span></div>
   </div>
 </div>
 
@@ -231,8 +247,9 @@ button.btn-cancel{ background:#4b4870; }
       <div class="card"><small>Verdiend</small><strong class="income">€<span id="yInc">0.00</span></strong></div>
       <div class="card"><small>Uitgegeven</small><strong class="expense">€<span id="yExp">0.00</span></strong></div>
       <div class="card"><small>Gespaard</small><strong class="saving">€<span id="ySav">0.00</span></strong></div>
-      <div class="card"><small>Over</small><strong id="yRest">€0.00</strong></div>
+      <div class="card"><small>Over (na sparen)</small><strong id="yRest">€0.00</strong></div>
     </div>
+    <p class="hint">Over = verdiend − uitgegeven − gespaard</p>
     <h4 style="margin:14px 0 0 0;">Gemiddeld per maand (dit jaar tot nu)</h4>
     <div class="cards">
       <div class="card"><small>Gemiddeld inkomen</small><strong class="income">€<span id="aInc">0.00</span></strong></div>
@@ -253,7 +270,7 @@ button.btn-cancel{ background:#4b4870; }
     <div class="row"><span>Inkomsten</span><span class="income">€<span id="gInc">0.00</span></span></div>
     <div class="row"><span>Uitgaven</span><span class="expense">€<span id="gExp">0.00</span></span></div>
     <div class="row"><span>Sparen</span><span class="saving">€<span id="gSav">0.00</span></span></div>
-    <div class="row total"><span>Overschot</span><span id="gBal">€0.00</span></div>
+    <div class="row total"><span>Overschot (na sparen)</span><span id="gBal">€0.00</span></div>
   </div>
 
   <div class="panel">
@@ -272,6 +289,12 @@ button.btn-cancel{ background:#4b4870; }
     <h3>Welk inkomen brengt het meeste op?</h3>
     <div class="pie-box"><canvas id="genPieInc"></canvas></div>
     <p class="empty" id="genPieIncEmpty">Nog geen inkomsten.</p>
+  </div>
+
+  <div class="panel">
+    <h3>Inkomsten per categorie</h3>
+    <div class="pie-box"><canvas id="genPieIncCat"></canvas></div>
+    <p class="empty" id="genPieIncCatEmpty">Nog geen inkomsten.</p>
   </div>
 
   <div class="panel">
@@ -327,6 +350,7 @@ function eachItem(fn){
   }
   data.categories.forEach(c=>walk(c, c));
 }
+/* Over = inkomsten - uitgaven - sparen */
 function sumMonth(month, recurringOnly){
   let inc=0, exp=0, sav=0;
   eachItem(i=>{
@@ -444,8 +468,9 @@ function addCategory(parent){
     v=>{
       const name=v.name.trim();
       if(!name) return "Vul een naam in.";
-      const cat={ name, children:[], items:[] };
+      const cat={ name, children:[], items:[], collapsed:false };
       (parent ? parent.children : data.categories).push(cat);
+      if(parent) parent.collapsed=false;
       refreshAll();
     });
 }
@@ -473,6 +498,7 @@ function addItem(cat){
     if(r.error) return r.error;
     r.item.startMonth = recurringOnly ? 0 : currentMonth;
     cat.items.push(r.item);
+    cat.collapsed=false;
     refreshAll();
   });
 }
@@ -510,10 +536,18 @@ function makeBtn(text, cls, fn, title){
 /* Tekent een categorie als gekleurd balkje met de bedragen eronder */
 function renderCategory(cat, parent, list, idx, ctx, isSub){
   const block=document.createElement("div");
-  block.className="cat-block";
+  block.className="cat-block"+(cat.collapsed?" collapsed":"");
 
   const bar=document.createElement("div");
   bar.className="cat-bar t-"+catType(cat)+(isSub?" sub":"");
+
+  const tg=makeBtn(cat.collapsed?"▸":"▾","small toggle",()=>{
+    cat.collapsed=!cat.collapsed;
+    block.classList.toggle("collapsed", cat.collapsed);
+    tg.textContent=cat.collapsed?"▸":"▾";
+  },"Inklappen / uitklappen");
+  bar.appendChild(tg);
+
   const nm=document.createElement("strong");
   nm.textContent=cat.name;
   bar.appendChild(nm);
@@ -583,18 +617,21 @@ function drawPie(key, canvasId, emptyId, labels, values, colors){
     options:{ responsive:true, plugins:{ legend:{ position:"bottom" } } }
   });
 }
-function expensePieData(valueFn){
+/* Cirkeldiagram-gegevens per hoofdcategorie, voor een bepaald soort */
+function pieDataByCategory(type, palette, valueFn){
   const labels=[], values=[], colors=[];
   data.categories.forEach(c=>{
-    const t=catTotal(c,"uitgave",valueFn);
+    const t=catTotal(c,type,valueFn);
     if(t>0){
       labels.push(c.name);
       values.push(Math.round(t*100)/100);
-      colors.push(PALETTE[colors.length % PALETTE.length]);
+      colors.push(palette[colors.length % palette.length]);
     }
   });
   return {labels, values, colors};
 }
+function expensePieData(valueFn){ return pieDataByCategory("uitgave", PALETTE, valueFn); }
+function incomePieData(valueFn){ return pieDataByCategory("inkomen", PALETTE_INC, valueFn); }
 
 /* ================= MAANDPAGINA ================= */
 const monthCtx = {
@@ -638,6 +675,9 @@ function renderMonthPage(){
 
   const p=expensePieData(i=>calcItem(i,currentMonth));
   drawPie("pie","pieChart","pieEmpty",p.labels,p.values,p.colors);
+
+  const q=incomePieData(i=>calcItem(i,currentMonth));
+  drawPie("incPie","incPieChart","incPieEmpty",q.labels,q.values,q.colors);
 }
 ["showIncome","showExpense","showSaving","showRest"].forEach(id=>{
   $(id).addEventListener("change", ()=>renderMonthPage());
@@ -716,10 +756,28 @@ function renderGeneralPage(){
   });
   drawPie("pInc","genPieInc","genPieIncEmpty",il,iv,ic);
 
+  const q=incomePieData(i=> i.freq==="eenmalig" ? 0 : monthly(i)*f);
+  drawPie("pIncCat","genPieIncCat","genPieIncCatEmpty",q.labels,q.values,q.colors);
+
   const p=expensePieData(i=> i.freq==="eenmalig" ? 0 : monthly(i)*f);
   drawPie("pExp","genPieExp","genPieExpEmpty",p.labels,p.values,p.colors);
 }
 $("genPeriod").addEventListener("change", ()=>renderGeneralPage());
+
+/* ================= PANELEN INKLAPBAAR ================= */
+document.querySelectorAll(".panel").forEach(p=>{
+  const h=p.querySelector("h3");
+  if(!h) return;
+  h.classList.add("panel-head");
+  h.title="Klik om in of uit te klappen";
+  h.onclick=()=>{
+    p.classList.toggle("collapsed");
+    if(!p.classList.contains("collapsed")){
+      /* grafieken opnieuw laten passen na uitklappen */
+      setTimeout(()=>{ Object.values(charts).forEach(c=>{ if(c) c.resize(); }); }, 30);
+    }
+  };
+});
 
 /* ================= MENU ================= */
 function openMenu(){ $("sidebar").classList.add("open"); $("backdrop").classList.add("open"); }
