@@ -2,6 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Budgettool 5.0</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
@@ -19,6 +20,7 @@ input, select { padding:6px; margin:4px 0; }
 .expense { color:red; }
 canvas { max-width:100%; }
 label { margin-right:10px; }
+.pie-box { max-width:400px; margin:0 auto; }
 </style>
 </head>
 <body>
@@ -41,6 +43,15 @@ label { margin-right:10px; }
   <label><input type="checkbox" id="showExpense" checked> Uitgaven</label>
   <label><input type="checkbox" id="showSaldo" checked> Saldo</label>
   <canvas id="chart"></canvas>
+</div>
+
+<!-- NIEUW: cirkeldiagram -->
+<div class="panel">
+  <h3>Uitgaven per categorie (deze maand)</h3>
+  <div class="pie-box">
+    <canvas id="pieChart"></canvas>
+  </div>
+  <p id="pieEmpty" style="display:none; text-align:center; color:#6b7280;">Nog geen uitgaven deze maand.</p>
 </div>
 
 <div class="panel">
@@ -153,6 +164,39 @@ function renderChart(){
   chart=new Chart(document.getElementById("chart"),{ type:"bar", data:{ labels:months, datasets:datasets }});
 }
 
+/* NIEUW: Cirkeldiagram uitgaven per hoofdcategorie (inclusief subcategorieën) */
+let pieChart;
+function sumCatExpenses(cat, month){
+  let total=0;
+  cat.items.forEach(i=>{
+    if(i.type!=="inkomen") total+=calcItem(i,month);
+  });
+  cat.children.forEach(c=>{ total+=sumCatExpenses(c,month); });
+  return total;
+}
+function renderPie(){
+  const labels=[], values=[];
+  data.categories.forEach(c=>{
+    const t=sumCatExpenses(c,currentMonth);
+    if(t>0){ labels.push(c.name); values.push(Math.round(t*100)/100); }
+  });
+  if(pieChart) pieChart.destroy();
+  const canvas=document.getElementById("pieChart");
+  const empty=document.getElementById("pieEmpty");
+  if(values.length===0){
+    canvas.style.display="none";
+    empty.style.display="block";
+    return;
+  }
+  canvas.style.display="block";
+  empty.style.display="none";
+  pieChart=new Chart(canvas,{
+    type:"pie",
+    data:{ labels:labels, datasets:[{ data:values }] },
+    options:{ responsive:true, plugins:{ legend:{ position:"bottom" } } }
+  });
+}
+
 /* Checkbox events */
 document.getElementById("showIncome").addEventListener("change", renderChart);
 document.getElementById("showExpense").addEventListener("change", renderChart);
@@ -169,6 +213,7 @@ function render(){
   root.innerHTML="";
   data.categories.forEach(c=>{ window.ref=c; renderCategory(c,root); });
   renderChart();
+  renderPie();
 }
 
 setTimeout(()=>render(),100);
