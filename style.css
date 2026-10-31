@@ -55,3 +55,5 @@ button.small {
 }
 #loginForm { max-width:400px; margin:40px auto; }
 
+/* NIEUW: cirkeldiagram */
+.pie-box { max-width: 400px; margin: 15px auto; background: white; padding: 10px; border-radius: 6px; }
