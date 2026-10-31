@@ -14,7 +14,7 @@ button { padding:6px 10px; border:none; border-radius:6px; cursor:pointer; backg
 button.small { font-size:12px; padding:4px 8px; }
 input, select { padding:6px; margin:4px 0; }
 .tree { margin-left:20px; border-left:2px solid #ddd; padding-left:10px; }
-.item { display:flex; gap:6px; align-items:center; margin:4px 0; }
+.item { display:flex; gap:6px; align-items:center; margin:4px 0; flex-wrap:wrap; }
 .badge { font-size:11px; background:#e5e7eb; border-radius:6px; padding:2px 6px; }
 .income { color:green; }
 .expense { color:red; }
@@ -25,6 +25,7 @@ label { margin-right:10px; }
 .surplus-total { font-size:1.3em; font-weight:bold; border-bottom:none; padding-top:12px; }
 .positive { color:green; }
 .negative { color:red; }
+button.icon { background:#e5e7eb; color:#111; padding:3px 7px; font-size:13px; }
 </style>
 </head>
 <body>
@@ -63,7 +64,6 @@ label { margin-right:10px; }
   <div id="categories"></div>
 </div>
 
-<!-- NIEUW: maandelijks overschot -->
 <div class="panel">
   <h3>Maandelijks overschot</h3>
   <p style="font-size:13px; color:#6b7280; margin-top:0;">Terugkerende inkomsten min terugkerende uitgaven (eenmalige bedragen tellen niet mee).</p>
@@ -89,13 +89,4 @@ monthSelect.onchange=()=>{ currentMonth=+monthSelect.value; render(); };
 
 /* Categorie & Item functies */
 function addCategory(parent){
-  const name = prompt("Naam categorie:");
-  if(!name) return;
-  const cat = { name, children:[], items:[] };
-  (parent ? parent.children : data.categories).push(cat);
-  render();
-}
-function addItem(cat){
-  const label = prompt("Naam bedrag:");
-  if(!label) return;
-  const amount =
+  const name =
