@@ -1,5 +1,7 @@
 /* ---------- Strakke iconen (pen en prullenbak) ---------- */
 const ICON_EDIT='<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+const ICON_CAL='<svg viewBox="0 0 24 24" class="ico"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 2.5v4"/><path d="M16 2.5v4"/></svg>';
+const ICON_CHART='<svg viewBox="0 0 24 24" class="ico"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>';
 const ICON_DEL='<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
 
 function monthName(i, style){
@@ -293,6 +295,7 @@ function chartsAvailable(){
   const ok = typeof Chart !== "undefined";
   $("chartWarn").style.display = ok ? "none" : "block";
   if(ok){
+    Chart.defaults.animation=false;
     Chart.defaults.color="#cbd5e1";
     Chart.defaults.borderColor="rgba(255,255,255,0.08)";
   }
@@ -504,7 +507,7 @@ function renderNav(){
   box.appendChild(l1);
   const g=document.createElement("button");
   g.className="side-item"+(page==="general"?" active":"");
-  g.textContent="📊 "+t("genOv");
+  g.innerHTML=ICON_CHART+"<span></span>"; g.lastChild.textContent=t("genOv");
   g.onclick=()=>{ page="general"; closeAll(); refreshAll(); };
   box.appendChild(g);
 
@@ -514,7 +517,7 @@ function renderNav(){
   monthsFull.forEach((m,i)=>{
     const b=document.createElement("button");
     b.className="side-item"+(page==="month" && i===currentMonth?" active":"");
-    b.textContent="📅 "+m;
+    b.innerHTML=ICON_CAL+"<span></span>"; b.lastChild.textContent=m;
     b.onclick=()=>{ page="month"; currentMonth=i; closeAll(); refreshAll(); };
     box.appendChild(b);
   });

@@ -166,3 +166,12 @@ button.btn-cancel{ background:#1c3a6e; color:var(--text); }
 .modal input, .modal select{ width:100%; margin:4px 0; }
 .modal .err{ color:var(--t-red); font-size:13px; margin-top:8px; }
 .modal .btns{ display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+
+/* ---------- Strakke menu-iconen ---------- */
+svg.ico{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+.gear-btn svg.ico{ width:22px; height:22px; stroke:var(--on-accent); }
+.side-item{ display:flex; align-items:center; gap:12px; }
+.side-item svg.ico{ color:var(--accent); }
+.side-item.active svg.ico{ color:var(--on-accent); }
+.sidebar .side-head strong.hd{ display:flex; align-items:center; gap:10px; }
+.sidebar .side-head strong.hd svg.ico{ color:var(--accent); }
