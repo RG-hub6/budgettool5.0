@@ -45,6 +45,28 @@ vi:{menu:"Menu",settings:"Cài đặt",lang:"Ngôn ngữ",gen:"Chung",genOv:"T�
 uk:{menu:"Меню",settings:"Налаштування",lang:"Мова",gen:"Загальне",genOv:"Загальний огляд",mon:"Місяці",ov:"Огляд",inc:"Доходи",exp:"Витрати",sav:"Заощадження",left:"Залишок (після заощаджень)",leftS:"Залишок",fm:"Залишок = доходи − витрати − заощадження",cy:"Графік (весь рік)",ep:"Витрати за категоріями (цей місяць)",ip:"Доходи за категоріями (цей місяць)",nem:"Цього місяця витрат ще немає.",nim:"Цього місяця доходів ще немає.",cats:"Категорії",nc:"+ нова категорія",ms:"Місячний надлишок",rh:"Регулярні суми цього місяця (разові не враховуються).",ri:"Регулярні доходи",re:"Регулярні витрати",sa:"Надлишок (після заощаджень)",ytd:"Цей рік на сьогодні (січень — {m})",earn:"Зароблено",spent:"Витрачено",fy:"Залишок = зароблено − витрачено − заощаджено",avg:"У середньому за місяць (цей рік)",ai:"Середній дохід",ae:"Середні витрати",as:"Середні заощадження",rec:"Регулярні суми",per:"Показувати за:",wk:"тиждень",mo:"місяць",yr:"рік",cr:"Графік регулярних",wt:"Куди йде мій дохід?",wh:"Розподіл регулярного доходу на витрати, заощадження та залишок.",wi:"Який дохід приносить найбільше?",ic:"Доходи за категоріями",wc:"У яку категорію йде найбільше грошей?",ni:"Доходів ще немає.",ne:"Витрат ще немає.",nb:"Доходів і витрат ще немає.",lr:"Список регулярних сум",cw:"Не вдалося завантажити графіки (Chart.js заблоковано). Решта сторінки працює.",nsub:"Нова підкатегорія",ncat:"Нова категорія",ren:"Перейменувати категорію",dc:"Видалити категорію",dcm:"Видалити категорію «{n}»? Усі суми та підкатегорії в ній також буде видалено.",nit:"Нова сума",eit:"Редагувати суму",di:"Видалити суму",dim:"Видалити суму «{n}»?",name:"Назва",amt:"Сума (€)",kind:"Тип",freq:"Як часто",save:"Зберегти",cancel:"Скасувати",del:"Видалити",e1:"Введіть назву.",e2:"Введіть коректну суму.",tI:"дохід",tE:"витрата",tS:"заощадження",dy:"день",once:"разово",addA:"+ сума",addS:"+ під"}
 };
 
+/* Nieuwe teksten voor het menu en de budgetpagina (andere talen vallen terug op Engels) */
+Object.assign(TR.nl,{
+  grp:"Overzichten", bud:"Budgetten", bPeriod:"Periode:", bYtd:"Dit jaar tot nu",
+  bTitleP:"Budget en uitgaven — {p}", bBudget:"Budget", bBal:"Balans", bTotOver:"Totaal boven budget",
+  bHint:"Balans = budget − uitgaven. Sparen telt niet mee. Bij “Dit jaar tot nu” is het budget het maandbudget × het aantal maanden.",
+  bPie:"Waar komt de overschrijding vandaan?", bPieE:"Geen enkele categorie zit boven het budget.",
+  bList:"Budgetten per categorie", bNew:"+ nieuw budget", bNewT:"Nieuw budget (categorie)", bEditT:"Budget bewerken",
+  bAmt:"Budget per maand (€)", bSet:"Budget instellen", bNone:"Geen budget ingesteld",
+  bOverBy:"€{x} boven budget", bLeftBy:"€{x} over", bNoCats:"Nog geen categorieën. Maak je eerste budget aan.",
+  bNoB:"Zonder budget", bOf:"van"
+});
+Object.assign(TR.en,{
+  grp:"Overviews", bud:"Budgets", bPeriod:"Period:", bYtd:"This year so far",
+  bTitleP:"Budget and spending — {p}", bBudget:"Budget", bBal:"Balance", bTotOver:"Total over budget",
+  bHint:"Balance = budget − expenses. Savings are not included. For “This year so far” the budget is the monthly budget × the number of months.",
+  bPie:"Where does the overspending come from?", bPieE:"No category is over budget.",
+  bList:"Budgets per category", bNew:"+ new budget", bNewT:"New budget (category)", bEditT:"Edit budget",
+  bAmt:"Budget per month (€)", bSet:"Set budget", bNone:"No budget set",
+  bOverBy:"€{x} over budget", bLeftBy:"€{x} left", bNoCats:"No categories yet. Create your first budget.",
+  bNoB:"Without budget", bOf:"of"
+});
+
 let lang = "nl";
 try { const s=localStorage.getItem("bt_lang"); if(s && TR[s]) lang=s; } catch(e){}
 function t(k){ return (TR[lang] && TR[lang][k]) || TR.en[k] || TR.nl[k] || k; }

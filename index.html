@@ -163,6 +163,33 @@
     <div id="genCategories"></div>
   </div>
 </div>
+
+<!-- ============ PAGINA: BUDGETTEN ============ -->
+<div id="pageBudget" style="display:none;">
+  <div class="panel">
+    <h3 id="budTitle"></h3>
+    <label><span data-i="bPeriod"></span> <select id="budPeriod"></select></label>
+    <div class="cards">
+      <div class="card"><small data-i="bBudget"></small><strong>€<span id="bdBudget">0.00</span></strong></div>
+      <div class="card"><small data-i="spent"></small><strong class="expense">€<span id="bdSpent">0.00</span></strong></div>
+      <div class="card"><small data-i="bBal"></small><strong id="bdBal">€0.00</strong></div>
+      <div class="card"><small data-i="bTotOver"></small><strong id="bdOver">€0.00</strong></div>
+    </div>
+    <p class="hint" data-i="bHint"></p>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="bPie"></h3>
+    <div class="pie-box"><canvas id="budPie"></canvas></div>
+    <p class="empty" id="budPieEmpty" data-i="bPieE"></p>
+  </div>
+
+  <div class="panel">
+    <h3 data-i="bList"></h3>
+    <button onclick="addBudget()" data-i="bNew"></button>
+    <div id="budList"></div>
+  </div>
+</div>
 </main>
 
 <script src="talen.js"></script>

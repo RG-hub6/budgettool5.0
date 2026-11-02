@@ -2,6 +2,7 @@
 const ICON_EDIT='<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
 const ICON_CAL='<svg viewBox="0 0 24 24" class="ico"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 2.5v4"/><path d="M16 2.5v4"/></svg>';
 const ICON_CHART='<svg viewBox="0 0 24 24" class="ico"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>';
+const ICON_BUD='<svg viewBox="0 0 24 24" class="ico"><rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 10h18"/><path d="M7 6V4.5h10V6"/><circle cx="16.5" cy="15" r="1"/></svg>';
 const ICON_DEL='<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
 
 function monthName(i, style){
@@ -498,31 +499,46 @@ $("closeSettings").onclick=closeAll;
 $("backdrop").onclick=closeAll;
 document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeAll(); });
 
+let menuGroupOpen=false;
 function renderNav(){
   const box=$("sideContent");
   box.innerHTML="";
 
-  const l1=document.createElement("div");
-  l1.className="side-label"; l1.textContent=t("gen");
-  box.appendChild(l1);
+  /* Knop 1: Overzichten (bundelt algemeen overzicht en alle maanden) */
+  const grp=document.createElement("div");
+  grp.className="menu-group"+(menuGroupOpen?" open":"");
+  const gb=document.createElement("button");
+  gb.className="side-item group"+((page==="month"||page==="general")?" group-active":"");
+  gb.innerHTML=ICON_CAL+'<span class="gl"></span><span class="chev">▾</span>';
+  gb.querySelector(".gl").textContent=t("grp");
+  gb.onclick=()=>{ menuGroupOpen=!menuGroupOpen; grp.classList.toggle("open",menuGroupOpen); };
+  grp.appendChild(gb);
+
+  const sub=document.createElement("div");
+  sub.className="submenu";
   const g=document.createElement("button");
   g.className="side-item"+(page==="general"?" active":"");
   g.innerHTML=ICON_CHART+"<span></span>"; g.lastChild.textContent=t("genOv");
   g.onclick=()=>{ page="general"; closeAll(); refreshAll(); };
-  box.appendChild(g);
-
-  const l2=document.createElement("div");
-  l2.className="side-label"; l2.textContent=t("mon");
-  box.appendChild(l2);
+  sub.appendChild(g);
   monthsFull.forEach((m,i)=>{
     const b=document.createElement("button");
     b.className="side-item"+(page==="month" && i===currentMonth?" active":"");
     b.innerHTML=ICON_CAL+"<span></span>"; b.lastChild.textContent=m;
     b.onclick=()=>{ page="month"; currentMonth=i; closeAll(); refreshAll(); };
-    box.appendChild(b);
+    sub.appendChild(b);
   });
+  grp.appendChild(sub);
+  box.appendChild(grp);
 
-  $("pageLabel").textContent = page==="general" ? t("genOv") : monthsFull[currentMonth];
+  /* Knop 2: Budgetten */
+  const bb=document.createElement("button");
+  bb.className="side-item"+(page==="budget"?" active":"");
+  bb.innerHTML=ICON_BUD+"<span></span>"; bb.lastChild.textContent=t("bud");
+  bb.onclick=()=>{ page="budget"; closeAll(); refreshAll(); };
+  box.appendChild(bb);
+
+  $("pageLabel").textContent = page==="general" ? t("genOv") : (page==="budget" ? t("bud") : monthsFull[currentMonth]);
 }
 
 function renderLangList(){
@@ -558,12 +574,177 @@ function applyLang(){
   refreshAll();
 }
 
+/* ================= BUDGETTEN ================= */
+let budMode = String(NOW);   // maandnummer of "ytd" (dit jaar tot nu)
+
+function budMult(){ return budMode==="ytd" ? NOW+1 : 1; }
+function catSpent(cat){
+  if(budMode==="ytd"){
+    let sum=0;
+    for(let m=0;m<=NOW;m++) sum+=catTotal(cat,"uitgave",i=>calcItem(i,m));
+    return sum;
+  }
+  const m=+budMode;
+  return catTotal(cat,"uitgave",i=>calcItem(i,m));
+}
+
+function budgetFields(cat, requireAmount){
+  return [
+    {key:"name", label:t("name"), type:"text", value:cat?cat.name:""},
+    {key:"budget", label:t("bAmt"), type:"number", value:(cat && cat.budget!==undefined)?cat.budget:""}
+  ];
+}
+function addBudget(){
+  openForm(t("bNewT"), budgetFields(null), v=>{
+    const name=v.name.trim();
+    if(!name) return t("e1");
+    const amount=parseFloat(String(v.budget).replace(",","."));
+    if(isNaN(amount) || amount<0) return t("e2");
+    data.categories.push({ name, children:[], items:[], collapsed:false, budget:amount });
+    refreshAll();
+  });
+}
+function editBudget(cat){
+  openForm(t("bEditT"), budgetFields(cat), v=>{
+    const name=v.name.trim();
+    if(!name) return t("e1");
+    const raw=String(v.budget).trim();
+    if(raw===""){ delete cat.budget; }
+    else {
+      const amount=parseFloat(raw.replace(",","."));
+      if(isNaN(amount) || amount<0) return t("e2");
+      cat.budget=amount;
+    }
+    cat.name=name;
+    refreshAll();
+  });
+}
+
+function budRow(cat, idx, spent, budget){
+  const hasB = budget>0;
+  const over = hasB && spent>budget+0.005;
+  const block=document.createElement("div");
+  block.className="cat-block";
+
+  const bar=document.createElement("div");
+  bar.className="cat-bar t-"+(!hasB ? "leeg" : (over ? "uitgave" : "inkomen"));
+  const nm=document.createElement("strong");
+  nm.textContent=cat.name;
+  bar.appendChild(nm);
+  bar.appendChild(makeBtn("✏️","small btn-edit",()=>editBudget(cat),t("bEditT")));
+  bar.appendChild(makeBtn("🗑️","small btn-del",()=>deleteCat(data.categories,idx),t("dc")));
+  block.appendChild(bar);
+
+  const body=document.createElement("div");
+  body.className="cat-body";
+  const it=document.createElement("div");
+  it.className="item";
+  const lb=document.createElement("span");
+  lb.className="nm";
+  if(hasB) lb.textContent=t("spent")+": "+money(spent)+" "+t("bOf")+" "+money(budget);
+  else lb.textContent=t("spent")+": "+money(spent);
+  it.appendChild(lb);
+
+  if(hasB){
+    const st=document.createElement("span");
+    st.className="am "+(over?"expense":"income");
+    st.textContent = over ? t("bOverBy").replace("{x}",fmt(spent-budget)) : t("bLeftBy").replace("{x}",fmt(budget-spent));
+    it.appendChild(st);
+    body.appendChild(it);
+    const pbar=document.createElement("div");
+    pbar.className="pbar";
+    const fill=document.createElement("div");
+    const pct=Math.min(100, spent/budget*100);
+    fill.className="pfill "+(spent>budget+0.005?"bad":(pct>=80?"warn":"ok"));
+    fill.style.width=pct+"%";
+    pbar.appendChild(fill);
+    body.appendChild(pbar);
+  } else {
+    const st=document.createElement("span");
+    st.className="badge";
+    st.textContent=t("bNone");
+    it.appendChild(st);
+    const sb=makeBtn(t("bSet"),"small",()=>editBudget(cat));
+    it.appendChild(sb);
+    body.appendChild(it);
+  }
+  block.appendChild(body);
+  return block;
+}
+
+function renderBudgetPage(){
+  /* Periodekeuze */
+  const sel=$("budPeriod");
+  sel.innerHTML="";
+  monthsFull.forEach((m,i)=>{
+    const o=document.createElement("option"); o.value=String(i); o.textContent=m; sel.appendChild(o);
+  });
+  const oy=document.createElement("option"); oy.value="ytd"; oy.textContent=t("bYtd"); sel.appendChild(oy);
+  sel.value=budMode;
+  const label = budMode==="ytd" ? t("bYtd") : monthsFull[+budMode];
+  $("budTitle").textContent=t("bTitleP").replace("{p}",label);
+
+  const mult=budMult();
+  const withB=[], noB=[];
+  data.categories.forEach((c,idx)=>{
+    const spent=catSpent(c);
+    const budget=(c.budget||0)*mult;
+    (budget>0 ? withB : noB).push({c, idx, spent, budget});
+  });
+
+  /* Balans (zonder sparen) */
+  let tb=0, ts=0, over=0;
+  const pl=[], pv=[], pc=[];
+  withB.forEach(r=>{
+    tb+=r.budget; ts+=r.spent;
+    if(r.spent>r.budget+0.005){
+      const d=r.spent-r.budget;
+      over+=d;
+      pl.push(r.c.name); pv.push(Math.round(d*100)/100); pc.push(PALETTE[pc.length % PALETTE.length]);
+    }
+  });
+  $("bdBudget").textContent=fmt(tb);
+  $("bdSpent").textContent=fmt(ts);
+  const bal=$("bdBal");
+  bal.textContent=money(tb-ts);
+  bal.className=(tb-ts)<0?"negative":"positive";
+  const ov=$("bdOver");
+  ov.textContent=money(over);
+  ov.className=over>0?"negative":"positive";
+
+  /* Cirkeldiagram: welke categorie veroorzaakt de overschrijding */
+  drawPie("bpie","budPie","budPieEmpty",pl,pv,pc);
+
+  /* Lijst */
+  const root=$("budList");
+  root.innerHTML="";
+  if(!data.categories.length){
+    const p=document.createElement("p");
+    p.className="hint"; p.style.marginTop="12px";
+    p.textContent=t("bNoCats");
+    root.appendChild(p);
+    return;
+  }
+  withB.forEach(r=>root.appendChild(budRow(r.c,r.idx,r.spent,r.budget)));
+  if(noB.length){
+    const l=document.createElement("div");
+    l.className="side-label"; l.style.marginTop="16px";
+    l.textContent=t("bNoB");
+    root.appendChild(l);
+    noB.forEach(r=>root.appendChild(budRow(r.c,r.idx,r.spent,0)));
+  }
+}
+$("budPeriod").addEventListener("change", e=>{ budMode=e.target.value; renderBudgetPage(); });
+
 function refreshAll(){
   renderNav();
   $("pageMonth").style.display = page==="month" ? "block" : "none";
   $("pageGeneral").style.display = page==="general" ? "block" : "none";
+  $("pageBudget").style.display = page==="budget" ? "block" : "none";
   try {
-    if(page==="month") renderMonthPage(); else renderGeneralPage();
+    if(page==="month") renderMonthPage();
+    else if(page==="general") renderGeneralPage();
+    else renderBudgetPage();
   } catch(e){ console.error(e); }
 }
 

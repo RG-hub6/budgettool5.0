@@ -187,3 +187,25 @@ svg.ico{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1
 .authmsg{ color:var(--t-red); font-size:13px; min-height:18px; text-align:center; }
 .authmsg.ok{ color:var(--t-green); }
 .linkbtn{ background:transparent !important; color:var(--accent) !important; font-weight:400 !important; padding:6px !important; }
+
+/* ---------- Menu-groep (Overzichten) ---------- */
+.menu-group{ margin-bottom:3px; }
+.side-item.group{ width:100%; }
+.side-item.group .gl{ flex:1; text-align:start; }
+.side-item.group .chev{ color:var(--muted); transition:transform .2s; }
+.side-item.group-active{ background:rgba(27,247,205,0.10); }
+.menu-group.open .chev{ transform:rotate(180deg); }
+.submenu{ display:none; margin:2px 0 6px 14px; padding-inline-start:8px; border-inline-start:2px solid var(--line); }
+.menu-group.open > .submenu{ display:block; }
+@media (hover:hover){
+  .menu-group:hover > .submenu{ display:block; }
+  .menu-group:hover .chev{ transform:rotate(180deg); }
+}
+.submenu .side-item{ font-size:14px; padding:9px 12px; }
+
+/* ---------- Budgetvoortgang ---------- */
+.pbar{ height:10px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden; margin:6px 0 8px; }
+.pfill{ height:100%; border-radius:999px; }
+.pfill.ok{ background:linear-gradient(90deg,#16a34a,#4ade80); }
+.pfill.warn{ background:linear-gradient(90deg,#d97706,#fbbf24); }
+.pfill.bad{ background:linear-gradient(90deg,#b91c1c,#f87171); }
