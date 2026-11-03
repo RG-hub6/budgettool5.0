@@ -1037,7 +1037,7 @@ function buddyContext(){
 function buddyAskAI(question){
   if(buddyBusy) return;
   buddyBusy=true;
-  const history=buddyMsgs.filter(m=>!m.pending).slice(-7).map(m=>({from:m.from, text:m.text}));
+  const history=buddyMsgs.filter(m=>!m.pending).slice(-11).map(m=>({from:m.from, text:m.text}));
   const pend={from:"buddy", text:T("Buddy zoekt het voor je uit… (dit kan even duren)","Buddy is looking into it… (this can take a moment)"), actions:null, pending:true};
   buddyMsgs.push(pend);
   renderBuddyPage();
@@ -1062,21 +1062,22 @@ function buddyHandleText(raw){
   const text=String(raw||"").trim();
   if(!text || buddyBusy) return;
   buddyPush("user", text);
+  /* Zegt de gebruiker “huur is vast” of “niet besparen op sport”? Dat leert Buddy meteen zelf. */
   const learn=tryLearn(text);
   if(learn){
     const name=resolveName(learn.target);
     if(learn.kind==="keep") learnKeep(name); else learnFixed(name);
     return;
   }
-  const intent=buddyIntent(text);
-  /* Snelle vragen over je eigen cijfers beantwoordt Buddy zelf, de rest gaat naar de AI */
-  if(intent && intent!=="save"){ buddyRun(intent); return; }
+  /* Met AI beantwoordt Buddy alles: je cijfers, tips van het internet en gewone vragen */
   if(buddyAIReady()){ buddyAskAI(text); return; }
+  /* Zonder AI: Buddy's eigen regelwerk */
+  const intent=buddyIntent(text);
   if(intent){ buddyRun(intent); return; }
   const lk=rLookup(bkey(text));
   if(lk){ lk.forEach(r=>buddyPush("buddy", r.text, r.actions)); renderBuddyPage(); return; }
-  buddyPush("buddy", T("Daar kan ik nog niet goed op antwoorden. Probeer bijvoorbeeld: “waarop kan ik besparen?”, “wat zijn mijn grootste uitgaven?” of “zit ik boven mijn budget?”.",
-                       "I can't answer that well yet. Try for example: “where can I save?”, “what are my biggest expenses?” or “am I over budget?”."));
+  buddyPush("buddy", T("Daar kan ik nog niet goed op antwoorden. Probeer bijvoorbeeld: “waarop kan ik besparen?”, “wat zijn mijn grootste uitgaven?” of “zit ik boven mijn budget?”. Met de AI-versie van Buddy kan je me ook gewone vragen stellen.",
+                       "I can't answer that well yet. Try for example: “where can I save?”, “what are my biggest expenses?” or “am I over budget?”. With the AI version of Buddy you can also ask me general questions."));
   renderBuddyPage();
 }
 
@@ -1088,7 +1089,7 @@ function renderBuddyPage(){
   $("buddyHint").textContent=T("Buddy kijkt naar jouw eigen cijfers en leert van wat je zegt. Het is geen financieel advies.",
                                "Buddy looks at your own numbers and learns from what you say. This is not financial advice.")
     + (buddyAIReady() ? T(" Voor vragen en tips van het internet wordt een samenvatting van je cijfers naar een AI-dienst gestuurd."," For questions and tips from the internet, a summary of your figures is sent to an AI service.") : "");
-  $("buddyInput").placeholder=T("Stel je vraag aan Buddy…","Ask Buddy something…");
+  $("buddyInput").placeholder=buddyAIReady() ? T("Vraag Buddy iets, wat je maar wil…","Ask Buddy anything…") : T("Stel je vraag aan Buddy…","Ask Buddy something…");
   $("buddySend").textContent=T("Verstuur","Send");
   if(!buddyMsgs.length){
     buddyPush("buddy", T("Hoi! Ik ben Buddy. Ik kijk met je mee naar je uitgaven en help je zoeken waar je kunt besparen. Op vaste kosten zoals huur of de afbetaling van een lening kan je moeilijk besparen, dus die laat ik buiten mijn tips. Zeg me gerust waar jij niet op wilt besparen, dan onthoud ik dat.",
