@@ -3,6 +3,7 @@ const ICON_EDIT='<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5
 const ICON_CAL='<svg viewBox="0 0 24 24" class="ico"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 10h18"/><path d="M8 2.5v4"/><path d="M16 2.5v4"/></svg>';
 const ICON_CHART='<svg viewBox="0 0 24 24" class="ico"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg>';
 const ICON_BUD='<svg viewBox="0 0 24 24" class="ico"><rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 10h18"/><path d="M7 6V4.5h10V6"/><circle cx="16.5" cy="15" r="1"/></svg>';
+const ICON_BOT='<svg viewBox="0 0 24 24" class="ico"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.6A8 8 0 1 1 21 12Z"/><path d="M9 11h.01"/><path d="M15 11h.01"/><path d="M9.5 14.5c1.5 1.2 3.5 1.2 5 0"/></svg>';
 const ICON_DEL='<svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
 
 function monthName(i, style){
@@ -14,7 +15,7 @@ function monthName(i, style){
 let months=[], monthsFull=[];
 
 /* ================= GEGEVENS ================= */
-const data = { categories: [] };
+const data = { categories: [], prefs: { fixed: {}, keep: {} } };
 const NOW = new Date().getMonth();
 let currentMonth = NOW;
 let page = "month";   // "month" of "general"
@@ -538,7 +539,14 @@ function renderNav(){
   bb.onclick=()=>{ page="budget"; closeAll(); refreshAll(); };
   box.appendChild(bb);
 
-  $("pageLabel").textContent = page==="general" ? t("genOv") : (page==="budget" ? t("bud") : monthsFull[currentMonth]);
+  /* Knop 3: Ask Buddy */
+  const by=document.createElement("button");
+  by.className="side-item"+(page==="buddy"?" active":"");
+  by.innerHTML=ICON_BOT+"<span></span>"; by.lastChild.textContent="Ask Buddy";
+  by.onclick=()=>{ page="buddy"; closeAll(); refreshAll(); };
+  box.appendChild(by);
+
+  $("pageLabel").textContent = page==="general" ? t("genOv") : (page==="budget" ? t("bud") : (page==="buddy" ? "Ask Buddy" : monthsFull[currentMonth]));
 }
 
 function renderLangList(){
@@ -736,15 +744,404 @@ function renderBudgetPage(){
 }
 $("budPeriod").addEventListener("change", e=>{ budMode=e.target.value; renderBudgetPage(); });
 
+/* ================= ASK BUDDY ================= */
+/* Buddy rekent met jouw eigen cijfers en leert van wat je zegt.
+   Wat Buddy leert wordt bewaard in data.prefs (vaste kosten en "niet besparen op"). */
+function T(nl,en){ return lang==="nl" ? nl : en; }
+function prefs(){
+  data.prefs = data.prefs || {};
+  data.prefs.fixed = data.prefs.fixed || {};
+  data.prefs.keep = data.prefs.keep || {};
+  return data.prefs;
+}
+function bkey(s){ return String(s||"").trim().toLowerCase(); }
+
+const FIXED_WORDS=["huur","hypotheek","lening","afbetaling","krediet","verzekering","belasting","kinderopvang","school","alimentatie","rent","mortgage","loan","insurance","tax","credit","lease","leasing"];
+function autoFixed(label,cat){
+  const s=bkey(label)+" "+bkey(cat);
+  return FIXED_WORDS.some(w=>s.indexOf(w)>-1);
+}
+const TIPS=[
+  {w:["abonnement","netflix","spotify","disney","streaming","youtube","subscription"], pct:0.30,
+   nl:"Check welke abonnementen je echt gebruikt en zeg de rest op.", en:"Check which subscriptions you really use and cancel the rest."},
+  {w:["restaurant","takeaway","uit eten","horeca","café","cafe","snack","koffie","lunch","fastfood","bar ","dining","coffee"], pct:0.25,
+   nl:"Kook vaker thuis en neem je lunch mee.", en:"Cook at home more often and bring your own lunch."},
+  {w:["kleding","kledij","shoppen","clothes","clothing","shopping"], pct:0.25,
+   nl:"Wacht met kopen en kijk eerst naar tweedehands of sales.", en:"Wait before buying and check second-hand or sales first."},
+  {w:["hobby","gaming","game","uitgaan","entertainment","cinema","bioscoop","vakantie","holiday"], pct:0.20,
+   nl:"Stel een vast maandbedrag in voor vrije tijd en hou je eraan.", en:"Set a fixed monthly amount for leisure and stick to it."},
+  {w:["sport","fitness","gym"], pct:0.15,
+   nl:"Vergelijk abonnementen of kies een goedkopere optie.", en:"Compare memberships or pick a cheaper option."},
+  {w:["gsm","telefoon","internet","mobile","phone"], pct:0.15,
+   nl:"Vergelijk tarieven; vaak kan je goedkoper bij dezelfde dienst.", en:"Compare rates; you can often pay less for the same service."},
+  {w:["energie","gas","elektriciteit","stroom","water","energy","electric"], pct:0.10,
+   nl:"Vergelijk leveranciers en let op je verbruik.", en:"Compare suppliers and watch your usage."},
+  {w:["boodschappen","supermarkt","groceries","food","eten"], pct:0.10,
+   nl:"Plan je maaltijden, maak een lijstje en gebruik aanbiedingen.", en:"Plan meals, use a shopping list and look for deals."},
+  {w:["transport","brandstof","benzine","diesel","auto","fuel","car","trein","bus"], pct:0.10,
+   nl:"Combineer ritten of kies vaker fiets of openbaar vervoer.", en:"Combine trips or use bike or public transport more often."}
+];
+function tipFor(e){
+  const s=" "+bkey(e.label)+" "+bkey(e.cat)+" ";
+  for(const x of TIPS){ if(x.w.some(w=>s.indexOf(w)>-1)) return x; }
+  return {pct:0.10, nl:"Kijk of je hier met een kleine aanpassing minder kan uitgeven.", en:"See if a small change could cut this cost."};
+}
+
+function buddyExpenses(month){
+  const out=[];
+  data.categories.forEach(top=>{
+    (function walk(cat){
+      cat.items.forEach(i=>{
+        if(i.type!=="uitgave") return;
+        const amt=calcItem(i,month);
+        if(amt>0) out.push({label:i.label, cat:top.name, amt});
+      });
+      cat.children.forEach(walk);
+    })(top);
+  });
+  const m={};
+  out.forEach(e=>{
+    const k=bkey(e.label);
+    if(!m[k]) m[k]={label:e.label, cat:e.cat, amt:0};
+    m[k].amt+=e.amt;
+  });
+  return Object.values(m);
+}
+function isFixed(e){
+  const p=prefs(), k=bkey(e.label), kc=bkey(e.cat);
+  if(p.fixed[k]!==undefined) return p.fixed[k];
+  if(p.fixed[kc]!==undefined) return p.fixed[kc];
+  return autoFixed(e.label,e.cat);
+}
+function isKept(e){
+  const p=prefs();
+  return !!p.keep[bkey(e.label)] || !!p.keep[bkey(e.cat)];
+}
+
+/* ----- Wat Buddy leert ----- */
+function learnFixed(label){
+  const p=prefs(), k=bkey(label);
+  p.fixed[k]=true; delete p.keep[k];
+  buddyPush("buddy", T("Genoteerd: “"+label+"” is een vaste kost. Daar laat ik je voortaan met rust.",
+                       "Noted: “"+label+"” is a fixed cost. I will leave it out of my tips from now on."),
+    [{label:T("Toon nieuwe tips","Show new tips"), fn:()=>buddyRun("save")}]);
+  refreshAll();
+}
+function learnKeep(label){
+  const p=prefs(), k=bkey(label);
+  p.keep[k]=true;
+  buddyPush("buddy", T("Oké, op “"+label+"” stel ik geen besparing meer voor.",
+                       "Okay, I will not suggest cutting “"+label+"” anymore."),
+    [{label:T("Toon nieuwe tips","Show new tips"), fn:()=>buddyRun("save")}]);
+  refreshAll();
+}
+function forgetPref(k){
+  const p=prefs();
+  delete p.fixed[k]; delete p.keep[k];
+  buddyPush("buddy", T("Vergeten: “"+k+"”.","Forgotten: “"+k+"”."));
+  refreshAll();
+}
+
+/* ----- Antwoorden ----- */
+function overBudgetList(){
+  const res=[];
+  data.categories.forEach(c=>{
+    if(!(c.budget>0)) return;
+    const spent=catTotal(c,"uitgave",i=>calcItem(i,NOW));
+    if(spent>c.budget+0.005) res.push({name:c.name, over:spent-c.budget, spent, budget:c.budget});
+  });
+  return res.sort((a,b)=>b.over-a.over);
+}
+
+function rSave(){
+  const mname=monthsFull[NOW];
+  const ex=buddyExpenses(NOW);
+  if(!ex.length) return [{text:T("Ik zie nog geen uitgaven in "+mname+". Voeg eerst bedragen toe, dan kan ik meekijken.",
+                                  "I don't see any expenses in "+mname+" yet. Add some amounts first and I can take a look.")}];
+  const fixed=ex.filter(isFixed);
+  const kept=ex.filter(e=>!isFixed(e) && isKept(e));
+  const cand=ex.filter(e=>!isFixed(e) && !isKept(e)).sort((a,b)=>b.amt-a.amt);
+  const replies=[];
+
+  const over=overBudgetList();
+  if(over.length){
+    replies.push({text:T("Eerst dit: je zit boven budget bij\n","First things first: you are over budget on\n")
+      + over.map(o=>"• "+o.name+": "+money(o.over)+T(" boven budget"," over budget")).join("\n")});
+  }
+  if(!cand.length){
+    replies.push({text:T("Buiten je vaste kosten en de dingen waar je niet op wilt besparen zie ik geen uitgaven meer om op te besparen. Sterk bezig!",
+                         "Apart from your fixed costs and the things you want to keep, I see nothing left to cut. Well done!")});
+  } else {
+    const top=cand.slice(0,5);
+    let total=0;
+    const lines=top.map(e=>{
+      const tp=tipFor(e), sv=e.amt*tp.pct;
+      total+=sv;
+      return "• "+e.label+" ("+e.cat+"): "+money(e.amt)+" → "+Math.round(tp.pct*100)+"% = "+money(sv)+T("/maand","/month")+"\n   "+T(tp.nl,tp.en);
+    });
+    replies.push({text:T("Dit zijn de plekken waar je in "+mname+" het makkelijkst kunt besparen:\n\n","These are the easiest places to save in "+mname+":\n\n")
+      + lines.join("\n\n")
+      + "\n\n"+T("Samen is dat ongeveer "+money(total)+" per maand ("+money(total*12)+" per jaar).",
+                 "Together that is about "+money(total)+" per month ("+money(total*12)+" per year).")});
+    const acts=[];
+    top.slice(0,3).forEach(e=>{
+      acts.push({label:T("Niet besparen op "+e.label,"Don't cut "+e.label), fn:()=>learnKeep(e.label)});
+      acts.push({label:T(e.label+" is vast",e.label+" is fixed"), fn:()=>learnFixed(e.label)});
+    });
+    if(buddyAIReady()){
+      acts.push({label:T("🔎 Meer tips van het internet","🔎 More tips from the internet"),
+                 fn:()=>buddyAskAI(T("Waarop kan ik het best besparen en hoe pak ik dat concreet aan? Zoek praktische tips.","Where can I best save and how do I do that in practice? Look up practical tips."))});
+    }
+    replies.push({text:T("Past dit bij jou? Zeg me waar je niet op wilt besparen, dan leer ik dat.",
+                         "Does this fit you? Tell me what you don't want to cut and I will learn it."), actions:acts});
+  }
+  if(fixed.length){
+    replies.push({text:T("Ik heb deze vaste kosten buiten beschouwing gelaten, want daar kan je moeilijk op besparen: ",
+                         "I left these fixed costs out because they are hard to cut: ")+fixed.map(e=>e.label).join(", ")+"."});
+  }
+  if(kept.length){
+    replies.push({text:T("En dit wil je zelf houden: ","And you want to keep these: ")+kept.map(e=>e.label).join(", ")+"."});
+  }
+  return replies;
+}
+
+function rTop(){
+  const mname=monthsFull[NOW];
+  const ex=buddyExpenses(NOW).sort((a,b)=>b.amt-a.amt);
+  if(!ex.length) return [{text:T("Ik zie nog geen uitgaven in "+mname+".","I don't see any expenses in "+mname+" yet.")}];
+  const total=ex.reduce((s,e)=>s+e.amt,0);
+  const lines=ex.slice(0,5).map((e,i)=>(i+1)+". "+e.label+" ("+e.cat+"): "+money(e.amt)+" ("+Math.round(e.amt/total*100)+"%)"+(isFixed(e)?T(" – vaste kost"," – fixed cost"):""));
+  return [{text:T("Je grootste uitgaven in "+mname+":\n","Your biggest expenses in "+mname+":\n")+lines.join("\n")+"\n\n"+T("Totaal uitgaven: ","Total expenses: ")+money(total)}];
+}
+
+function rBudget(){
+  const has=data.categories.some(c=>c.budget>0);
+  if(!has) return [{text:T("Je hebt nog geen budgetten ingesteld. Op de pagina Budgetten kan je per categorie een maandbudget kiezen.",
+                           "You haven't set any budgets yet. On the Budgets page you can set a monthly budget per category."),
+                    actions:[{label:T("Naar Budgetten","Go to Budgets"), fn:()=>{ page="budget"; refreshAll(); }}]}];
+  const over=overBudgetList();
+  const mname=monthsFull[NOW];
+  if(!over.length) return [{text:T("Goed nieuws: in "+mname+" zit geen enkele categorie boven het budget.","Good news: in "+mname+" no category is over budget.")}];
+  const total=over.reduce((s,o)=>s+o.over,0);
+  return [{text:T("In "+mname+" zit je boven budget bij:\n","In "+mname+" you are over budget on:\n")
+    + over.map(o=>"• "+o.name+": "+money(o.spent)+T(" van "," of ")+money(o.budget)+" ("+money(o.over)+T(" te veel"," too much")+")").join("\n")
+    + "\n\n"+T("Totaal boven budget: ","Total over budget: ")+money(total),
+    actions:[{label:T("Toon besparingstips","Show saving tips"), fn:()=>buddyRun("save")}]}];
+}
+
+function rBal(){
+  const r=sumMonth(NOW,false);
+  const mname=monthsFull[NOW];
+  let txt=T("In "+mname+": inkomsten "+money(r.inc)+", uitgaven "+money(r.exp)+", gespaard "+money(r.sav)+".\nOver: "+money(r.rest)+".",
+            "In "+mname+": income "+money(r.inc)+", expenses "+money(r.exp)+", saved "+money(r.sav)+".\nLeft: "+money(r.rest)+".");
+  if(r.inc>0){
+    if(r.rest>0) txt+="\n"+T("Je zou dit bedrag kunnen sparen.","You could save this amount.");
+    else if(r.rest<0) txt+="\n"+T("Je geeft meer uit dan je binnenkrijgt. Zullen we kijken waar je kunt besparen?","You spend more than you earn. Shall we look at where you can save?");
+  }
+  return [{text:txt}];
+}
+
+function rMem(){
+  const p=prefs();
+  const fx=Object.keys(p.fixed).filter(k=>p.fixed[k]);
+  const nf=Object.keys(p.fixed).filter(k=>!p.fixed[k]);
+  const kp=Object.keys(p.keep).filter(k=>p.keep[k]);
+  const auto=buddyExpenses(NOW).filter(e=>p.fixed[bkey(e.label)]===undefined && p.fixed[bkey(e.cat)]===undefined && autoFixed(e.label,e.cat)).map(e=>e.label);
+  let txt=T("Dit heb ik van jou geleerd:\n","Here is what I have learned from you:\n");
+  if(!fx.length && !nf.length && !kp.length) txt+=T("• Nog niets. Zeg bijvoorbeeld “huur is vast” of “ik wil niet besparen op sport”.","• Nothing yet. Say for example “rent is fixed” or “I don't want to save on sports”.");
+  if(fx.length) txt+="• "+T("Vaste kosten (jij zei): ","Fixed costs (you said): ")+fx.join(", ")+"\n";
+  if(nf.length) txt+="• "+T("Geen vaste kost (jij zei): ","Not fixed (you said): ")+nf.join(", ")+"\n";
+  if(kp.length) txt+="• "+T("Hier wil je niet op besparen: ","You don't want to cut: ")+kp.join(", ")+"\n";
+  if(auto.length) txt+="\n"+T("Zelf herkend als vaste kost: ","Recognised as fixed by me: ")+auto.join(", ")+".";
+  const keys=[...new Set([...fx,...nf,...kp])].slice(0,8);
+  return [{text:txt.trim(), actions:keys.map(k=>({label:T("Vergeet: ","Forget: ")+k, fn:()=>forgetPref(k)}))}];
+}
+
+function rLookup(text){
+  const names=new Set();
+  data.categories.forEach(top=>{ names.add(top.name); (function walk(c){ if(c!==top) names.add(c.name); c.items.forEach(i=>names.add(i.label)); c.children.forEach(walk); })(top); });
+  const found=[...names].filter(n=>n && n.trim().length>=3 && text.indexOf(bkey(n))>-1).sort((a,b)=>b.length-a.length)[0];
+  if(!found) return null;
+  const k=bkey(found);
+  const ex=buddyExpenses(NOW);
+  const hit=ex.find(e=>bkey(e.label)===k);
+  let amt=hit?hit.amt:ex.filter(e=>bkey(e.cat)===k).reduce((s,e)=>s+e.amt,0);
+  const probe=hit||{label:found,cat:found};
+  const status=isFixed(probe)?T("een vaste kost","a fixed cost"):(isKept(probe)?T("iets waar je niet op wilt besparen","something you want to keep"):T("een uitgave waar je op kunt letten","an expense you can look at"));
+  return [{text:T("“"+found+"”: "+money(amt)+" in "+monthsFull[NOW]+". Voor mij is dit "+status+".",
+                  "“"+found+"”: "+money(amt)+" in "+monthsFull[NOW]+". To me this is "+status+"."),
+    actions:[
+      {label:T("Niet besparen op "+found,"Don't cut "+found), fn:()=>learnKeep(found)},
+      {label:T(found+" is vast",found+" is fixed"), fn:()=>learnFixed(found)}
+    ]}];
+}
+
+/* Typ je zelf “huur is vast” of “niet besparen op sport”? Dan leert Buddy dat meteen. */
+function tryLearn(raw){
+  const text=bkey(raw).replace(/[.!?]+$/,"");
+  let m=text.match(/(?:niet|nooit|geen)\s+(?:wil\s+)?(?:ik\s+)?(?:be)?sparen\s+op\s+(.+)$/) ||
+        text.match(/(?:don'?t|do not|never)\s+(?:want\s+to\s+)?(?:save|cut)\s+(?:on|back on)\s+(.+)$/) ||
+        text.match(/(?:niet|nooit)\s+(?:be)?sparen\s+op\s+(.+)$/);
+  if(m){ return {kind:"keep", target:m[1].trim()}; }
+  m=text.match(/^(.+?)\s+(?:is|zijn|are)\s+(?:een\s+|a\s+)?(?:vast|vaste kost|vaste kosten|fixed|fixed cost)$/);
+  if(m){ return {kind:"fixed", target:m[1].trim()}; }
+  return null;
+}
+function resolveName(target){
+  const names=new Set();
+  data.categories.forEach(top=>{ names.add(top.name); (function walk(c){ c.items.forEach(i=>names.add(i.label)); c.children.forEach(w=>{ names.add(w.name); walk(w); }); })(top); });
+  const k=bkey(target);
+  const hit=[...names].find(n=>bkey(n)===k) || [...names].find(n=>bkey(n).indexOf(k)>-1 || k.indexOf(bkey(n))>-1);
+  return hit || target;
+}
+
+function buddyIntent(text){
+  const s=bkey(text);
+  if(/(weet|geleerd|onthou|onthouden|vergeet|know about me|remember|learned|forget)/.test(s)) return "mem";
+  if(/(budget|boven mijn|over budget|overschrij)/.test(s)) return "budget";
+  if(/(grootste|meeste|duurste|top uitgaven|biggest|largest|most expensive|top expenses)/.test(s)) return "top";
+  if(/(bespa|bezuinig|minder uitgeven|tips|besparen|save|saving|cut|reduce|cheaper|economi)/.test(s)) return "save";
+  if(/(houd ik over|hoeveel over|overschot|saldo|balans|over heb|balance|how much (do i )?have left|left over|surplus)/.test(s)) return "bal";
+  if(/^(hoi|hallo|hey|hi|hello|goedendag|dag)\b/.test(s)) return "hi";
+  return null;
+}
+
+function buddyRun(intent){
+  let replies;
+  if(intent==="save") replies=rSave();
+  else if(intent==="top") replies=rTop();
+  else if(intent==="budget") replies=rBudget();
+  else if(intent==="bal") replies=rBal();
+  else if(intent==="mem") replies=rMem();
+  else replies=[{text:T("Hoi! Waar kan ik je mee helpen?","Hi! What can I help you with?")}];
+  replies.forEach(r=>buddyPush("buddy", r.text, r.actions));
+  renderBuddyPage();
+}
+
+function buddyAIReady(){ return typeof window.buddyAI === "function"; }
+let buddyBusy=false;
+
+function buddyContext(){
+  const p=prefs();
+  const r=sumMonth(NOW,false);
+  const ex=buddyExpenses(NOW).map(e=>({label:e.label, category:e.cat, amount:Math.round(e.amt*100)/100, fixed:isFixed(e), keep:isKept(e)}));
+  const budgets=data.categories.filter(c=>c.budget>0).map(c=>({category:c.name, budget:c.budget, spent:Math.round(catTotal(c,"uitgave",i=>calcItem(i,NOW))*100)/100}));
+  return {
+    month:monthsFull[NOW], currency:"EUR",
+    income:Math.round(r.inc*100)/100, expenses_total:Math.round(r.exp*100)/100, saved:Math.round(r.sav*100)/100, left:Math.round(r.rest*100)/100,
+    expenses:ex, budgets:budgets,
+    prefs:{ fixed:Object.keys(p.fixed).filter(k=>p.fixed[k]), keep:Object.keys(p.keep).filter(k=>p.keep[k]) }
+  };
+}
+
+function buddyAskAI(question){
+  if(buddyBusy) return;
+  buddyBusy=true;
+  const history=buddyMsgs.filter(m=>!m.pending).slice(-7).map(m=>({from:m.from, text:m.text}));
+  const pend={from:"buddy", text:T("Buddy zoekt het voor je uit… (dit kan even duren)","Buddy is looking into it… (this can take a moment)"), actions:null, pending:true};
+  buddyMsgs.push(pend);
+  renderBuddyPage();
+  const done=()=>{ buddyBusy=false; const ix=buddyMsgs.indexOf(pend); if(ix>-1) buddyMsgs.splice(ix,1); };
+  window.buddyAI({question:question, lang:lang, history:history, context:buddyContext()}).then(r=>{
+    done();
+    buddyPush("buddy", r.answer || T("Ik kreeg geen antwoord. Probeer het nog eens.","I didn't get an answer. Please try again."));
+    const p=prefs(), learned=[];
+    (r.fixed||[]).forEach(n=>{ const k=bkey(resolveName(String(n))); if(k){ p.fixed[k]=true; delete p.keep[k]; learned.push(k); } });
+    (r.keep||[]).forEach(n=>{ const k=bkey(resolveName(String(n))); if(k){ p.keep[k]=true; learned.push(k); } });
+    if(learned.length) buddyPush("buddy", T("Ik heb onthouden: ","I have remembered: ")+learned.join(", ")+".");
+    refreshAll();
+  }).catch(e=>{
+    console.error(e);
+    done();
+    buddyPush("buddy", T("Sorry, Buddy kon het antwoord niet ophalen. Probeer het later opnieuw.","Sorry, Buddy could not fetch the answer. Please try again later."));
+    renderBuddyPage();
+  });
+}
+
+function buddyHandleText(raw){
+  const text=String(raw||"").trim();
+  if(!text || buddyBusy) return;
+  buddyPush("user", text);
+  const learn=tryLearn(text);
+  if(learn){
+    const name=resolveName(learn.target);
+    if(learn.kind==="keep") learnKeep(name); else learnFixed(name);
+    return;
+  }
+  const intent=buddyIntent(text);
+  /* Snelle vragen over je eigen cijfers beantwoordt Buddy zelf, de rest gaat naar de AI */
+  if(intent && intent!=="save"){ buddyRun(intent); return; }
+  if(buddyAIReady()){ buddyAskAI(text); return; }
+  if(intent){ buddyRun(intent); return; }
+  const lk=rLookup(bkey(text));
+  if(lk){ lk.forEach(r=>buddyPush("buddy", r.text, r.actions)); renderBuddyPage(); return; }
+  buddyPush("buddy", T("Daar kan ik nog niet goed op antwoorden. Probeer bijvoorbeeld: “waarop kan ik besparen?”, “wat zijn mijn grootste uitgaven?” of “zit ik boven mijn budget?”.",
+                       "I can't answer that well yet. Try for example: “where can I save?”, “what are my biggest expenses?” or “am I over budget?”."));
+  renderBuddyPage();
+}
+
+/* ----- Chat tekenen ----- */
+let buddyMsgs=[];
+function buddyPush(from,text,actions){ buddyMsgs.push({from, text, actions:actions||null}); }
+
+function renderBuddyPage(){
+  $("buddyHint").textContent=T("Buddy kijkt naar jouw eigen cijfers en leert van wat je zegt. Het is geen financieel advies.",
+                               "Buddy looks at your own numbers and learns from what you say. This is not financial advice.")
+    + (buddyAIReady() ? T(" Voor vragen en tips van het internet wordt een samenvatting van je cijfers naar een AI-dienst gestuurd."," For questions and tips from the internet, a summary of your figures is sent to an AI service.") : "");
+  $("buddyInput").placeholder=T("Stel je vraag aan Buddy…","Ask Buddy something…");
+  $("buddySend").textContent=T("Verstuur","Send");
+  if(!buddyMsgs.length){
+    buddyPush("buddy", T("Hoi! Ik ben Buddy. Ik kijk met je mee naar je uitgaven en help je zoeken waar je kunt besparen. Op vaste kosten zoals huur of de afbetaling van een lening kan je moeilijk besparen, dus die laat ik buiten mijn tips. Zeg me gerust waar jij niet op wilt besparen, dan onthoud ik dat.",
+                         "Hi! I'm Buddy. I look at your expenses with you and help you find where to save. Fixed costs like rent or a loan repayment are hard to cut, so I leave those out of my tips. Tell me what you don't want to cut and I will remember it."));
+  }
+  const chat=$("buddyChat");
+  chat.innerHTML="";
+  buddyMsgs.forEach(m=>{
+    const d=document.createElement("div");
+    d.className="msg "+m.from+(m.pending?" pending":"");
+    d.appendChild(document.createTextNode(m.text));
+    if(m.actions && m.actions.length){
+      const box=document.createElement("div");
+      box.className="macts";
+      m.actions.forEach(a=>{
+        const b=document.createElement("button");
+        b.textContent=a.label;
+        b.onclick=()=>{ m.actions=null; a.fn(); };
+        box.appendChild(b);
+      });
+      d.appendChild(box);
+    }
+    chat.appendChild(d);
+  });
+  chat.scrollTop=chat.scrollHeight;
+
+  const chips=$("buddyChips");
+  chips.innerHTML="";
+  [[T("Waarop kan ik besparen?","Where can I save?"),"save"],
+   [T("Wat zijn mijn grootste uitgaven?","What are my biggest expenses?"),"top"],
+   [T("Zit ik boven mijn budget?","Am I over budget?"),"budget"],
+   [T("Hoeveel houd ik over?","How much do I have left?"),"bal"],
+   [T("Wat weet Buddy over mij?","What does Buddy know about me?"),"mem"]].forEach(c=>{
+    const b=document.createElement("button");
+    b.textContent=c[0];
+    b.onclick=()=>{ buddyPush("user", c[0]); buddyRun(c[1]); };
+    chips.appendChild(b);
+  });
+}
+$("buddySend").addEventListener("click", ()=>{ const i=$("buddyInput"); const v=i.value; i.value=""; buddyHandleText(v); });
+$("buddyInput").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); $("buddySend").click(); } });
+
 function refreshAll(){
   renderNav();
   $("pageMonth").style.display = page==="month" ? "block" : "none";
   $("pageGeneral").style.display = page==="general" ? "block" : "none";
   $("pageBudget").style.display = page==="budget" ? "block" : "none";
+  $("pageBuddy").style.display = page==="buddy" ? "block" : "none";
   try {
     if(page==="month") renderMonthPage();
     else if(page==="general") renderGeneralPage();
-    else renderBudgetPage();
+    else if(page==="budget") renderBudgetPage();
+    else renderBuddyPage();
   } catch(e){ console.error(e); }
 }
 

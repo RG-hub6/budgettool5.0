@@ -4,5 +4,6 @@ window.APPWRITE_CONFIG = {
   endpoint: "https://fra.cloud.appwrite.io/v1",
   projectId: "6ae795a6000785aebc4f",
   databaseId: "6ae79710002839a90da1",
+  buddyFunctionId: "PLAK-HIER-JE-FUNCTION-ID",   // voor de AI van Buddy (zie uitleg)
   tableId: "6ae797370022e9fd8b61"
 };

@@ -32,6 +32,31 @@
 
   const client = new Appwrite.Client().setEndpoint(cfg.endpoint).setProject(cfg.projectId);
   const account = new Appwrite.Account(client);
+  /* Buddy-AI: roept de Appwrite Function aan en wacht op het antwoord */
+  if(ok(cfg.buddyFunctionId) && typeof Appwrite.Functions === "function"){
+    const functions = new Appwrite.Functions(client);
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    window.buddyAI = async function(payload){
+      const ex = await functions.createExecution({
+        functionId: cfg.buddyFunctionId, body: JSON.stringify(payload),
+        async: true, path: "/", method: "POST", headers: { "content-type": "application/json" }
+      });
+      const start = Date.now();
+      while(Date.now() - start < 120000){
+        await sleep(1500);
+        const e = await functions.getExecution({ functionId: cfg.buddyFunctionId, executionId: ex.$id });
+        if(e.status === "completed"){
+          let r = {};
+          try { r = JSON.parse(e.responseBody || "{}"); } catch(err){}
+          if(e.responseStatusCode >= 400 || r.error) throw new Error(r.error || ("status " + e.responseStatusCode));
+          return r;
+        }
+        if(e.status === "failed") throw new Error("failed");
+      }
+      throw new Error("timeout");
+    };
+  }
+
 
   /* Nieuwe Appwrite-databases heten "TablesDB" (tabellen en rijen).
      Oudere varianten (Databases, collecties en documenten) blijven als reserve werken. */
@@ -170,18 +195,29 @@
   function loadData(u){
     showMessage(t("lg_load"));
     getRow(u.$id).then(doc => {
-      let cats = [];
-      try { cats = JSON.parse(doc.categories || "[]"); } catch(e){ cats = []; }
+      let cats = [], prefs = null;
+      try {
+        const parsed = JSON.parse(doc.categories || "[]");
+        if(Array.isArray(parsed)){ cats = parsed; }          // oud formaat: alleen categorieën
+        else { cats = parsed.categories || []; prefs = parsed.prefs || null; }
+      } catch(e){ cats = []; }
       docExists = true;
-      finishLoad(cats);
+      finishLoad(cats, prefs);
     }).catch(e => {
-      if(e && e.code === 404){ docExists = false; finishLoad([]); }
+      if(e && e.code === 404){ docExists = false; finishLoad([], null); }
       else { console.error(e); loaded = false; showMessage(t("lg_loaderr")); }
     });
   }
-  function finishLoad(cats){
+  /* Wat er bewaard wordt: categorieën + wat Buddy heeft geleerd */
+  function serialize(){
+    return JSON.stringify({ v: 2, categories: data.categories, prefs: data.prefs });
+  }
+  function finishLoad(cats, prefs){
     data.categories = cats;
-    lastSaved = JSON.stringify(cats);
+    data.prefs = prefs || { fixed: {}, keep: {} };
+    data.prefs.fixed = data.prefs.fixed || {};
+    data.prefs.keep = data.prefs.keep || {};
+    lastSaved = serialize();
     loaded = true;
     overlay.style.display = "none";
     refreshAll();
@@ -189,7 +225,7 @@
 
   function saveNow(){
     if(!user || !loaded) return;
-    const s = JSON.stringify(data.categories);
+    const s = serialize();
     if(s === lastSaved) return;
     let p;
     if(docExists){
@@ -241,7 +277,7 @@
       setTimeout(() => {
         account.deleteSession({ sessionId: "current" }).catch(()=>{}).then(() => {
           user = null; loaded = false; docExists = false;
-          data.categories = []; lastSaved = "[]";
+          data.categories = []; data.prefs = { fixed: {}, keep: {} }; lastSaved = "[]";
           showLogin();
           refreshAll();
         });
