@@ -762,6 +762,9 @@ function autoFixed(label,cat){
   return FIXED_WORDS.some(w=>s.indexOf(w)>-1);
 }
 const TIPS=[
+  {w:["deliveroo","uber eats","ubereats","thuisbezorgd","takeaway.com","just eat","bezorg","delivery","maaltijdbox","hellofresh"], pct:0.50,
+   nl:"Kook zelf: zoek makkelijke recepten op YouTube of doe aan mealprepping (in één keer voor meerdere dagen koken). Een grote pot pasta met groenten of kip met rijst geeft al 4 maaltijden.",
+   en:"Cook at home: find easy recipes on YouTube or try meal prepping (cook several portions at once). One big pot of pasta with vegetables or chicken with rice already gives 4 meals."},
   {w:["abonnement","netflix","spotify","disney","streaming","youtube","subscription"], pct:0.30,
    nl:"Check welke abonnementen je echt gebruikt en zeg de rest op.", en:"Check which subscriptions you really use and cancel the rest."},
   {w:["restaurant","takeaway","uit eten","horeca","café","cafe","snack","koffie","lunch","fastfood","bar ","dining","coffee"], pct:0.25,
@@ -890,7 +893,7 @@ function rSave(){
     });
     if(buddyAIReady()){
       acts.push({label:T("🔎 Meer tips van het internet","🔎 More tips from the internet"),
-                 fn:()=>buddyAskAI(T("Waarop kan ik het best besparen en hoe pak ik dat concreet aan? Zoek praktische tips.","Where can I best save and how do I do that in practice? Look up practical tips."))});
+                 fn:()=>buddyAskAI(T("Waarop kan ik het best besparen? Ga mijn uitgaven één voor één na, leg uit wat ze zijn en geef per uitgave een concreet alternatief (bij eten laten bezorgen bv. een makkelijk recept of mealprepplan).","Where can I best save? Go through my expenses one by one, explain what they are and give a concrete alternative for each (for food delivery e.g. an easy recipe or a meal prep plan)."))});
     }
     replies.push({text:T("Past dit bij jou? Zeg me waar je niet op wilt besparen, dan leer ik dat.",
                          "Does this fit you? Tell me what you don't want to cut and I will learn it."), actions:acts});
